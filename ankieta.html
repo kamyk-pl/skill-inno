@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ankieta hackathonowa</title>
+<meta name="description" content="Ankieta w dwóch częściach: przed hackathonem (projekt, plan, oczekiwania) i po nim (skille, modele, koszt, wynik), z porównaniem planu i rezultatu.">
+<style>
+:root{
+  --bg:#05070a; --panel:#0c1117; --panel2:#141b25; --line:#1f2b3a;
+  --text:#e6edf3; --muted:#8d9aab; --dim:#4f5d6e; --bad:#ff5d5d;
+  --talk:#00e5ff; --hw:#ffd84d;
+  --grill:#ff7a3d; --sp:#5b95ff; --as:#3ddc97;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:80px}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:16px/1.55 var(--sans);--part:var(--talk)}
+body[data-mode="po"]{--part:var(--hw)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 70% 55% at 85% -10%,color-mix(in srgb,var(--part) 12%,transparent),transparent 70%),
+             radial-gradient(ellipse 50% 40% at 0% 110%,color-mix(in srgb,var(--part) 7%,transparent),transparent 70%)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px)}
+code{font-family:var(--mono);font-size:.88em;background:var(--panel2);padding:.1em .35em;border-radius:4px;border:1px solid var(--line)}
+::selection{background:var(--part);color:#000}
+[hidden]{display:none!important}
+
+/* top bar */
+.bar{position:sticky;top:0;z-index:10;height:56px;display:flex;align-items:center;gap:12px;padding:0 16px;
+  background:rgba(5,7,10,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+.brand{font:700 14px var(--mono);color:var(--muted);white-space:nowrap;text-decoration:none}
+.brand:hover{color:var(--text)}
+.brand b{color:var(--part)}
+.tabs{display:flex;gap:6px}
+.tab{--tc:var(--talk);font:800 12px var(--mono);letter-spacing:.08em;border:1px dashed var(--line);border-radius:6px;padding:7px 11px;
+  background:none;color:var(--tc);cursor:pointer;white-space:nowrap}
+.tab[data-mode="po"]{--tc:var(--hw)}
+.tab[aria-selected="true"]{background:var(--tc);border:1px solid var(--tc);color:#000}
+.tab:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.count{margin-left:auto;font:13px var(--mono);color:var(--muted);white-space:nowrap}
+.count b{color:var(--text)}
+.progress{position:sticky;top:56px;z-index:11;height:3px;width:0;background:var(--part);box-shadow:0 0 12px var(--part);transition:width .25s}
+
+main{position:relative;z-index:1;max-width:780px;margin:0 auto;padding:36px 16px 96px}
+.kicker{font:14px var(--mono);color:var(--part);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.kicker .pt{font-weight:800;font-size:11px;letter-spacing:.12em;padding:2px 7px;border-radius:4px;background:var(--part);color:#000}
+.kicker .pr{color:var(--dim)}
+h1{font:800 clamp(32px,6vw,54px)/1.08 var(--mono);letter-spacing:-.01em;margin:0 0 14px;
+  text-shadow:0 0 22px color-mix(in srgb,var(--part) 40%,transparent)}
+h1 span{color:var(--part)}
+.lead{font-size:clamp(17px,2vw,20px);color:var(--muted);margin:0 0 30px}
+
+/* question blocks */
+fieldset{margin:0;padding:0;border:0;min-width:0}
+.q{position:relative;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--c);border-radius:10px;
+  padding:20px 20px 22px;margin:0 0 18px;--c:var(--part)}
+.q.invalid{border-color:var(--bad);border-left-color:var(--bad)}
+.q>legend{float:left;width:100%;padding:0;margin:0 0 6px;font:800 19px var(--mono)}
+.q>legend+*{clear:both}
+.q>legend .n{color:var(--c);margin-right:8px}
+.hint{color:var(--muted);margin:0 0 14px;font-size:15px}
+.hint.small{font-size:14px;margin:14px 0 0}
+.sub{font:700 15px var(--mono);margin:20px 0 10px}
+.sub.first{margin-top:4px}
+.opt{font:400 13px var(--sans);color:var(--dim);margin-left:6px}
+.req{color:var(--part)}
+.err{color:var(--bad);font:13px var(--mono);margin:12px 0 0}
+.err::before{content:"✗ "}
+
+input[type=text],textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;
+  padding:10px 12px;font:16px var(--sans);transition:border-color .15s}
+input[type=text]:focus,textarea:focus{outline:none;border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent)}
+input.bad{border-color:var(--bad)}
+input::placeholder,textarea::placeholder{color:var(--dim)}
+textarea{min-height:96px;resize:vertical}
+label.f{display:block;font:13px var(--mono);color:var(--muted)}
+label.f input{margin-top:5px}
+.other{margin-top:12px}
+.echo{display:block;min-height:18px;margin-top:3px;font:12px var(--mono);color:var(--dim)}
+.echo.bad{color:var(--bad)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{--cc:var(--c);border:1px dashed var(--line);background:none;color:var(--muted);font:13px var(--mono);padding:8px 13px;
+  border-radius:999px;cursor:pointer;transition:all .15s}
+.chip::before{content:"+ ";opacity:.6}
+.chip:hover{color:var(--text);border-color:var(--cc)}
+.chip[aria-pressed=true]{border:1px solid var(--cc);color:var(--cc);background:color-mix(in srgb,var(--cc) 12%,transparent);font-weight:700}
+.chip[aria-pressed=true]::before{content:"✓ ";opacity:1}
+.chip small{color:var(--dim);font-weight:400;margin-left:4px}
+.chip:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+
+/* 1–5 rating */
+.rate{display:flex;gap:6px;max-width:304px}
+.rate label{flex:1}
+.rate input,.opts input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.rate span{display:flex;align-items:center;justify-content:center;height:42px;border:1px solid var(--line);border-radius:6px;
+  background:var(--bg);font:700 15px var(--mono);color:var(--muted);cursor:pointer;transition:all .15s}
+.rate label:hover span{border-color:var(--c);color:var(--text)}
+.rate:has(input[value="1"]:checked) label:nth-child(-n+1) span,
+.rate:has(input[value="2"]:checked) label:nth-child(-n+2) span,
+.rate:has(input[value="3"]:checked) label:nth-child(-n+3) span,
+.rate:has(input[value="4"]:checked) label:nth-child(-n+4) span,
+.rate:has(input[value="5"]:checked) label:nth-child(-n+5) span{border-color:var(--c);color:var(--c)}
+.rate input:checked+span{background:var(--c);border-color:var(--c);color:#000!important;box-shadow:0 0 14px color-mix(in srgb,var(--c) 45%,transparent)}
+.rate input:focus-visible+span,.opts input:focus-visible+span{outline:2px solid var(--text);outline-offset:2px}
+.ends{display:flex;justify-content:space-between;max-width:304px;margin-top:4px;font:12px var(--mono);color:var(--dim)}
+
+/* expectations scale */
+.opts{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.opts label{--oc:var(--muted)}
+.opts span{display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;padding:12px 6px;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg);cursor:pointer;text-align:center;font-size:13px;color:var(--muted);transition:all .15s}
+.opts span b{font:800 20px var(--mono);color:var(--oc)}
+.opts label:hover span{border-color:var(--oc);color:var(--text)}
+.opts input:checked+span{border-color:var(--oc);background:color-mix(in srgb,var(--oc) 16%,transparent);color:var(--text);
+  box-shadow:0 0 14px color-mix(in srgb,var(--oc) 35%,transparent)}
+
+/* upload card */
+.load{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:14px}
+.load .st{flex:1;min-width:220px;font-size:15px;color:var(--muted)}
+.load .st.ok{color:var(--text)}
+.load .st.ok::before{content:"✓ ";color:var(--as);font-weight:700}
+.load .st.bad{color:var(--bad)}
+.facts{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0 0 16px;padding:12px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;font-size:15px}
+.facts dt{font:13px var(--mono);color:var(--muted)}
+.facts dd{margin:0;overflow-wrap:anywhere}
+
+/* buttons */
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:26px}
+.btn{font:700 15px var(--mono);border-radius:8px;padding:12px 20px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text);text-decoration:none}
+.btn:hover{border-color:var(--part)}
+.btn.primary{background:var(--part);border-color:var(--part);color:#000;box-shadow:0 0 18px color-mix(in srgb,var(--part) 35%,transparent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{font-size:13px;padding:8px 14px}
+.btn.ghost{background:none;color:var(--muted)}
+.btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.draft{font:12px var(--mono);color:var(--dim);margin-left:auto}
+
+/* notices + comparison */
+.box{margin-top:30px;background:var(--panel);border:1px solid var(--as);border-radius:10px;padding:22px 20px;
+  box-shadow:0 0 24px color-mix(in srgb,var(--as) 15%,transparent)}
+.box h2{font:800 22px var(--mono);margin:0 0 6px;color:var(--as)}
+.box h2::before{content:"✓ "}
+.box p{margin:0 0 14px;color:var(--muted)}
+.box p.warn{color:var(--hw)}
+.box .actions{margin-top:6px}
+
+.cmp{display:grid;gap:12px;margin:18px 0}
+.ci{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.ch{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:12px}
+.ch h3{margin:0;font:800 15px var(--mono)}
+.badge{--bc:var(--muted);font:800 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:4px;
+  border:1px solid var(--bc);color:var(--bc);background:color-mix(in srgb,var(--bc) 12%,transparent)}
+.pair{display:grid;grid-template-columns:1fr 28px 1fr;gap:10px;align-items:start}
+.pair .arr{color:var(--dim);font:700 18px var(--mono);text-align:center;padding-top:20px}
+.side .lbl{display:block;font:800 11px var(--mono);letter-spacing:.1em;margin-bottom:6px}
+.side.b .lbl{color:var(--talk)}
+.side.a .lbl{color:var(--hw)}
+.side .txt{white-space:pre-wrap;overflow-wrap:anywhere}
+.side .none{color:var(--dim)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{--tg:var(--muted);font:700 13px var(--mono);padding:4px 10px;border-radius:999px;border:1px solid var(--tg);color:var(--tg)}
+.tag.kept{--tg:var(--as)}
+.tag.kept::before{content:"✓ "}
+.tag.dropped{--tg:var(--grill);text-decoration:line-through}
+.tag.added{--tg:var(--hw)}
+.tag.added::before{content:"+ "}
+.dots{font:15px var(--mono);letter-spacing:.1em;color:var(--part);white-space:nowrap}
+.dots.b{color:var(--talk)}
+.dots.a{color:var(--hw)}
+.big{font:800 22px var(--mono);margin-left:6px;color:var(--text)}
+.legend{font:12px var(--mono);color:var(--dim);margin-top:10px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}
+.kv dt{font:13px var(--mono);color:var(--muted)}
+.kv dd{margin:0}
+
+@media (max-width:620px){
+  .bar{gap:8px;padding:0 10px}
+  .brand{display:none}
+  .q{padding:16px 14px 18px}
+  .cols{grid-template-columns:1fr}
+  .opts{grid-template-columns:1fr}
+  .opts span{flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 14px;text-align:left}
+  .opts span b{width:2em}
+  .rate{max-width:none}.ends{max-width:none}
+  .draft{width:100%;margin:0}
+  .pair{grid-template-columns:1fr}
+  .pair .arr{padding:0;transform:rotate(90deg);width:28px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body data-mode="przed">
+<header class="bar">
+  <a class="brand" href="index.html" title="Wróć do prezentacji">skill-inno<b>::ankieta</b></a>
+  <nav class="tabs" role="tablist" aria-label="Część ankiety">
+    <button type="button" class="tab" role="tab" data-mode="przed" aria-selected="true">1 · PRZED</button>
+    <button type="button" class="tab" role="tab" data-mode="po" aria-selected="false">2 · PO</button>
+  </nav>
+  <span class="count"><b id="done">0</b>/<span id="total">3</span></span>
+</header>
+<div class="progress" id="progress"></div>
+
+<main>
+  <noscript><p class="err">Ankieta wymaga włączonego JavaScriptu.</p></noscript>
+
+  <!-- ===================== PRZED ===================== -->
+  <section data-panel="przed">
+    <div class="kicker"><span class="pt">PRZED HACKATHONEM</span><span class="pr">~/feedback $</span> ankieta --plan</div>
+    <h1>Zanim <span>zaczniesz</span></h1>
+    <p class="lead">Trzy pytania o plan. Na koniec zapisz odpowiedzi do pliku <code>.json</code> i zachowaj go. Po hackathonie wgrasz go w części <b>PO</b> i zobaczysz, jak plan wypadł na tle wyniku.</p>
+
+    <form id="fb" novalidate>
+      <fieldset class="q" id="q-b-project" style="--c:var(--talk)">
+        <legend><span class="n">01</span>Nazwa projektu <span class="req">*</span></legend>
+        <input type="text" id="b-project" maxlength="120" autocomplete="off" aria-label="Nazwa projektu" placeholder="np. Agent do przeglądu PR-ów">
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-b-skill" style="--c:var(--sp)">
+        <legend><span class="n">02</span>Planowany skill <span class="req">*</span></legend>
+        <p class="hint">Z którego zestawu skilli zamierzasz korzystać? Możesz zaznaczyć kilka.</p>
+        <div class="chips" id="b-skills" data-none="Jeszcze nie wiem"></div>
+        <input type="text" class="other" id="b-skills-other" maxlength="200" autocomplete="off" aria-label="Inne skille" placeholder="Inny skill lub repo (kilka rozdziel przecinkami)">
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-b-expect" style="--c:var(--as)">
+        <legend><span class="n">03</span>Twoje oczekiwania <span class="req">*</span></legend>
+        <div class="sub first">Co chcesz osiągnąć na hackathonie?</div>
+        <textarea id="b-goal" maxlength="2000" aria-label="Co chcesz osiągnąć" placeholder="np. działający prototyp agenta, który komentuje PR-y i proponuje testy"></textarea>
+        <div class="sub">Na ile, Twoim zdaniem, uda się osiągnąć cel?</div>
+        <div class="rate" role="radiogroup" aria-label="Na ile uda się osiągnąć cel" data-rate="b-expected"></div>
+        <div class="ends"><span>1 · raczej nie</span><span>5 · na pewno</span></div>
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" class="btn primary">Zapisz odpowiedzi (.json)</button>
+        <button type="button" class="btn ghost" data-reset="przed">Wyczyść</button>
+        <span class="draft" data-draft="przed"></span>
+      </div>
+    </form>
+
+    <section class="box" id="b-done" hidden aria-live="polite"></section>
+  </section>
+
+  <!-- ===================== PO ===================== -->
+  <section data-panel="po" hidden>
+    <div class="kicker"><span class="pt">PO HACKATHONIE</span><span class="pr">~/feedback $</span> ankieta --wynik</div>
+    <h1>Jak <span>poszło?</span></h1>
+    <p class="lead">Wgraj plik zapisany przed hackathonem i odpowiedz na sześć pytań. Po zatwierdzeniu zobaczysz porównanie planu z wynikiem.</p>
+
+    <form id="fa" novalidate>
+      <fieldset class="q" id="q-a-before" style="--c:var(--talk)">
+        <legend>Odpowiedzi sprzed hackathonu</legend>
+        <div class="load">
+          <span class="st" id="a-before-st">Nie wczytano pliku.</span>
+          <label class="btn small" for="a-file">Wgraj plik .json</label>
+          <input type="file" id="a-file" accept=".json,application/json" hidden>
+        </div>
+        <dl class="facts" id="a-before-facts" hidden></dl>
+        <label class="f" for="a-project">Nazwa projektu <span class="req">*</span></label>
+        <input type="text" id="a-project" maxlength="120" autocomplete="off" placeholder="uzupełni się z pliku" style="margin-top:6px">
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-a-skill" style="--c:var(--sp)">
+        <legend><span class="n">04</span>Wybrany skill <span class="req">*</span></legend>
+        <p class="hint">Z których skilli faktycznie korzystałeś? Jeśli z kilku, zaznacz wszystkie.</p>
+        <div class="chips" id="a-skills" data-none="Nie używaliśmy skilli"></div>
+        <input type="text" class="other" id="a-skills-other" maxlength="200" autocomplete="off" aria-label="Inne skille" placeholder="Inny skill lub repo (kilka rozdziel przecinkami)">
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-a-models" style="--c:var(--sp)">
+        <legend><span class="n">05</span>Wykorzystane modele <span class="req">*</span></legend>
+        <div class="chips" id="a-models"></div>
+        <input type="text" class="other" id="a-models-other" maxlength="200" autocomplete="off" aria-label="Inne modele" placeholder="Inny model (kilka rozdziel przecinkami)">
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-a-cost" style="--c:var(--as)">
+        <legend><span class="n">06</span>Koszt<span class="opt">jeśli znasz</span></legend>
+        <div class="cols">
+          <label class="f">Łącznie (USD)<input type="text" id="a-cost" data-parse="cost" inputmode="decimal" autocomplete="off" placeholder="np. 42,50"><small class="echo"></small></label>
+          <label class="f">Tokeny<span class="opt">opcjonalnie</span><input type="text" id="a-tokens" data-parse="tokens" inputmode="decimal" autocomplete="off" placeholder="np. 3,1M albo 800k"><small class="echo"></small></label>
+        </div>
+        <p class="hint small">W Claude Code koszt i tokeny bieżącej sesji pokazuje polecenie <code>/cost</code>. Przy kilku sesjach albo innych narzędziach zajrzyj do panelu rozliczeń dostawcy.</p>
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-a-result" style="--c:var(--hw)">
+        <legend><span class="n">07</span>Wynik <span class="req">*</span></legend>
+        <p class="hint">Na ile udało się osiągnąć cel? To ta sama skala, na której przed hackathonem oceniałeś szanse.</p>
+        <div class="rate" role="radiogroup" aria-label="Na ile udało się osiągnąć cel" data-rate="a-result"></div>
+        <div class="ends"><span>1 · wcale</span><span>5 · w pełni</span></div>
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-a-expect" style="--c:var(--hw)">
+        <legend><span class="n">08</span>Czy było tak, jak oczekiwano? <span class="req">*</span></legend>
+        <div class="opts" role="radiogroup" aria-label="Wynik na tle oczekiwań" id="a-expect"></div>
+        <p class="err" hidden></p>
+      </fieldset>
+
+      <fieldset class="q" id="q-a-diff" style="--c:var(--grill)">
+        <legend><span class="n">09</span>Co było inaczej?<span class="opt">opcjonalnie</span></legend>
+        <textarea id="a-diff" maxlength="2000" aria-label="Co było inaczej" placeholder="np. Superpowers za bardzo spowalniał na starcie, przeszliśmy na Grill-me, a agent sam dopisał testy"></textarea>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" class="btn primary">Zatwierdź</button>
+        <button type="button" class="btn ghost" data-reset="po">Wyczyść</button>
+        <span class="draft" data-draft="po"></span>
+      </div>
+    </form>
+
+    <section class="box" id="a-done" hidden aria-live="polite"></section>
+  </section>
+</main>
+
+<script>
+/* Lista modeli do podmiany. */
+const MODELS = ['Claude Fable 5.1', 'Claude Opus 5.5', 'Claude Sonnet 5.5', 'Claude Haiku 5.5', 'GPT (OpenAI)', 'Gemini (Google)'];
+const SKILLS = [
+  { name: 'Grill-me', src: 'mattpocock/skills', c: 'var(--grill)' },
+  { name: 'Superpowers', src: 'obra/superpowers', c: 'var(--sp)' },
+  { name: 'agent-skills', src: 'addyosmani/agent-skills', c: 'var(--as)' },
+  { name: 'Własne skille', src: '', c: 'var(--talk)' },
+];
+const EXPECT = [
+  ['much_less', '−−', 'Dużo mniej', 'var(--grill)'],
+  ['less', '−', 'Trochę mniej', '#ffb27d'],
+  ['as_expected', '=', 'Tak, jak zakładano', 'var(--talk)'],
+  ['more', '+', 'Trochę więcej', '#8ef0c2'],
+  ['much_more', '++', 'Dużo więcej', 'var(--as)'],
+];
+const VERDICT = {
+  as_planned: ['zgodnie z planem', 'var(--as)'],
+  partly: ['częściowa zmiana', 'var(--hw)'],
+  changed: ['zmiana skilla', 'var(--grill)'],
+  none_used: ['bez skilli', 'var(--grill)'],
+  no_plan: ['plan nieustalony', 'var(--muted)'],
+};
+const KEY = { przed: 'ankieta-v2-przed-szkic', po: 'ankieta-v2-po-szkic', before: 'ankieta-v2-przed-plik' };
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n, d = 0) => n.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+const forms = { przed: $('#fb'), po: $('#fa') };
+let before = null;       // wczytane odpowiedzi PRZED
+let beforeSrc = '';      // 'plik' albo 'przeglądarka'
+
+/* ---------- parsing ---------- */
+/* „3,1M”, „800k”, „1 200 000”, „1.200.000” → liczba; puste → null; nieczytelne → NaN */
+function parseTokens(s) {
+  s = s.toLowerCase().replace(/[\s_]/g, '');
+  if (!s) return null;
+  if (/^\d{1,3}([.,]\d{3})+$/.test(s)) return +s.replace(/[.,]/g, '');
+  const m = s.replace(',', '.').match(/^(\d+(?:\.\d+)?)(k|tys\.?|m|mln)?$/);
+  if (!m) return NaN;
+  return Math.round(parseFloat(m[1]) * ({ k: 1e3, tys: 1e3, 'tys.': 1e3, m: 1e6, mln: 1e6 }[m[2]] || 1));
+}
+function parseCost(s) {
+  s = s.toLowerCase().replace(/[\s$]|usd/g, '').replace(',', '.');
+  if (!s) return null;
+  return /^\d+(\.\d+)?$/.test(s) ? Math.round(parseFloat(s) * 100) / 100 : NaN;
+}
+const PARSE = { cost: parseCost, tokens: parseTokens };
+const splitList = s => s.split(',').map(x => x.trim()).filter(Boolean);
+
+/* ---------- building blocks ---------- */
+function chip(name, opt = {}) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'chip';
+  b.dataset.name = name;
+  if (opt.none) b.dataset.none = '1';
+  if (opt.c) b.style.setProperty('--cc', opt.c);
+  b.setAttribute('aria-pressed', 'false');
+  b.innerHTML = esc(name) + (opt.src ? `<small>${esc(opt.src)}</small>` : '');
+  return b;
+}
+function fillChips(group, items) {
+  items.forEach(it => group.append(typeof it === 'string' ? chip(it) : chip(it.name, it)));
+  if (group.dataset.none) group.append(chip(group.dataset.none, { none: true, c: 'var(--muted)' }));
+}
+function rateHTML(name) {
+  let h = '';
+  for (let i = 1; i <= 5; i++) h += `<label><input type="radio" name="${name}" value="${i}"><span>${i}</span></label>`;
+  return h;
+}
+function build() {
+  fillChips($('#b-skills'), SKILLS);
+  fillChips($('#a-skills'), SKILLS);
+  fillChips($('#a-models'), MODELS);
+  $$('[data-rate]').forEach(r => r.innerHTML = rateHTML(r.dataset.rate));
+  $('#a-expect').innerHTML = EXPECT.map(([v, sym, label, c]) =>
+    `<label style="--oc:${c}"><input type="radio" name="a-expect" value="${v}"><span><b>${sym}</b>${label}</span></label>`).join('');
+}
+
+/* ---------- reading answers ---------- */
+const text = id => $('#' + id).value.trim();
+const radio = name => $(`input[name="${name}"]:checked`)?.value || '';
+const pressed = id => $$(`#${id} .chip[aria-pressed=true]`);
+function picks(id) {
+  return {
+    names: [...pressed(id).filter(c => !c.dataset.none).map(c => c.dataset.name), ...splitList(text(id + '-other'))],
+    none: pressed(id).some(c => c.dataset.none),
+  };
+}
+
+function beforeData() {
+  const s = picks('b-skills');
+  return {
+    form: 'hackathon-before',
+    version: 2,
+    savedAt: new Date().toISOString(),
+    project: text('b-project'),
+    plannedSkills: s.names,
+    plannedUnknown: s.none,
+    goal: text('b-goal'),
+    expectedResult: +radio('b-expected') || null,
+  };
+}
+function afterData() {
+  const s = picks('a-skills');
+  const after = {
+    usedSkills: s.names,
+    noSkills: s.none,
+    models: picks('a-models').names,
+    costUsd: parseCost(text('a-cost')),
+    tokens: parseTokens(text('a-tokens')),
+    resultRating: +radio('a-result') || null,
+    expectations: radio('a-expect'),
+    differences: text('a-diff'),
+  };
+  return {
+    form: 'hackathon-after',
+    version: 2,
+    submittedAt: new Date().toISOString(),
+    project: text('a-project'),
+    before: before && { savedAt: before.savedAt, plannedSkills: before.plannedSkills, plannedUnknown: before.plannedUnknown, goal: before.goal, expectedResult: before.expectedResult },
+    after,
+    comparison: before && compare(before, after),
+  };
+}
+
+/* ---------- comparison ---------- */
+function compare(b, a) {
+  const key = s => s.trim().toLowerCase();
+  const plan = new Map(b.plannedSkills.map(s => [key(s), s]));
+  const used = new Map(a.usedSkills.map(s => [key(s), s]));
+  const kept = [...used].filter(([k]) => plan.has(k)).map(([, v]) => v);
+  const added = [...used].filter(([k]) => !plan.has(k)).map(([, v]) => v);
+  const dropped = [...plan].filter(([k]) => !used.has(k)).map(([, v]) => v);
+  const verdict = !plan.size ? 'no_plan'
+    : a.noSkills || !used.size ? 'none_used'
+    : !added.length && !dropped.length ? 'as_planned'
+    : kept.length ? 'partly' : 'changed';
+  const delta = b.expectedResult && a.resultRating ? a.resultRating - b.expectedResult : null;
+  return { skills: { verdict, kept, dropped, added }, result: { expected: b.expectedResult, actual: a.resultRating, delta } };
+}
+
+const dots = (r, cls) => r ? `<span class="dots ${cls}">${'■'.repeat(r)}${'□'.repeat(5 - r)}</span><span class="big">${r}/5</span>` : '<span class="none">—</span>';
+/* tags([lista, klasa], …) → jeden wiersz znaczników */
+const tags = (...groups) => `<div class="tags">${groups.flatMap(([list, cls]) => list.map(s => `<span class="tag ${cls}">${esc(s)}</span>`)).join('')}</div>`;
+const badge = (label, c) => `<span class="badge" style="--bc:${c}">${esc(label)}</span>`;
+const side = (who, body) => `<div class="side ${who}"><span class="lbl">${who === 'b' ? 'PRZED' : 'PO'}</span>${body}</div>`;
+const pair = (b, a) => `<div class="pair">${side('b', b)}<span class="arr" aria-hidden="true">→</span>${side('a', a)}</div>`;
+
+function deltaBadge(d) {
+  if (d == null) return '';
+  if (d === 0) return badge('zgodnie z założeniem', 'var(--talk)');
+  return d > 0 ? badge(`+${d} ponad założenie`, 'var(--as)') : badge(`−${-d} poniżej założenia`, 'var(--grill)');
+}
+
+function renderAfter(d) {
+  const a = d.after, c = d.comparison, b = d.before;
+  const exp = EXPECT.find(e => e[0] === a.expectations);
+  const money = a.costUsd == null ? '—' : fmt(a.costUsd, 2) + ' USD';
+  const toks = a.tokens == null ? '' : ` · ${fmt(a.tokens)} tokenów`;
+  const usedTags = a.noSkills || !a.usedSkills.length ? '<span class="none">bez skilli</span>' : '';
+
+  let cmp = '';
+  if (c) {
+    const s = c.skills;
+    const planTags = b.plannedUnknown || !b.plannedSkills.length ? '<span class="none">jeszcze nie wiadomo</span>'
+      : tags([s.kept, 'kept'], [s.dropped, 'dropped']);
+    cmp = `
+      <div class="cmp">
+        <div class="ci">
+          <div class="ch"><h3>Skill</h3>${badge(...VERDICT[s.verdict])}</div>
+          ${pair(planTags, usedTags || tags([s.kept, 'kept'], [s.added, 'added']))}
+          ${s.verdict !== 'no_plan' ? '<div class="legend">✓ zgodnie z planem · przekreślone: zaplanowany, ale nieużyty · + spoza planu</div>' : ''}
+        </div>
+        <div class="ci">
+          <div class="ch"><h3>Wynik</h3>${deltaBadge(c.result.delta)}</div>
+          ${pair(`<div>${dots(c.result.expected, 'b')}</div><div class="legend" style="margin-top:4px">zakładane szanse</div>`,
+                 `<div>${dots(c.result.actual, 'a')}</div><div class="legend" style="margin-top:4px">osiągnięty cel</div>`)}
+        </div>
+        <div class="ci">
+          <div class="ch"><h3>Oczekiwania</h3>${badge(`${exp[1]} ${exp[2]}`, exp[3])}</div>
+          ${pair(`<div class="txt">${esc(b.goal)}</div>`,
+                 a.differences ? `<div class="txt">${esc(a.differences)}</div>` : '<span class="none">bez opisu różnic</span>')}
+        </div>
+      </div>`;
+  } else {
+    cmp = `
+      <p class="warn">Nie wczytano pliku sprzed hackathonu, więc nie ma z czym porównać. Możesz go wgrać na górze formularza i zatwierdzić jeszcze raz.</p>
+      <dl class="kv" style="margin-bottom:16px">
+        <dt>skill</dt><dd>${usedTags || esc(a.usedSkills.join(', '))}</dd>
+        <dt>wynik</dt><dd>${dots(a.resultRating, 'a')}</dd>
+        <dt>oczekiwania</dt><dd><b style="color:${exp[3]}">${exp[1]}</b> ${exp[2]}</dd>
+      </dl>`;
+  }
+
+  const box = $('#a-done');
+  box.innerHTML = `
+    <h2>${c ? 'Porównanie' : 'Zatwierdzone'}</h2>
+    <p><b style="color:var(--text)">${esc(d.project)}</b> · modele: ${esc(a.models.join(', '))} · koszt: ${money}${toks}</p>
+    ${cmp}
+    <div class="actions">
+      <button type="button" class="btn primary" id="a-save">Zapisz wynik (.json)</button>
+      <span class="draft" id="a-save-st"></span>
+    </div>`;
+  box.hidden = false;
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#a-save').onclick = async () => {
+    const name = await saveJson(d, `ankieta-po-${slug(d.project)}.json`);
+    if (name) $('#a-save-st').textContent = `zapisano: ${name}`;
+  };
+}
+
+/* ---------- files ---------- */
+const slug = s => s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'projekt';
+
+/* Okno „Zapisz jako” tam, gdzie przeglądarka je ma (Chrome, Edge), w pozostałych zwykłe pobieranie. */
+async function saveJson(data, name) {
+  const body = JSON.stringify(data, null, 2);
+  if (window.showSaveFilePicker) {
+    try {
+      const h = await showSaveFilePicker({ suggestedName: name, types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
+      const w = await h.createWritable();
+      await w.write(body);
+      await w.close();
+      return h.name;
+    } catch (e) {
+      if (e.name === 'AbortError') return '';
+    }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  return name + ' (w folderze pobranych)';
+}
+
+function setBefore(d, src) {
+  before = d;
+  beforeSrc = src;
+  const st = $('#a-before-st');
+  st.className = 'st ok';
+  st.textContent = src === 'plik' ? 'Wczytano plik sprzed hackathonu.' : 'Wczytano odpowiedzi zapisane wcześniej w tej przeglądarce.';
+  const plan = d.plannedUnknown || !d.plannedSkills.length ? 'jeszcze nie wiadomo' : d.plannedSkills.join(', ');
+  const facts = $('#a-before-facts');
+  facts.innerHTML = `
+    <dt>projekt</dt><dd>${esc(d.project)}</dd>
+    <dt>plan</dt><dd>${esc(plan)}</dd>
+    <dt>szanse</dt><dd>${d.expectedResult}/5</dd>
+    <dt>zapisano</dt><dd>${esc(new Date(d.savedAt).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' }))}</dd>`;
+  facts.hidden = false;
+  $('label[for="a-file"]').textContent = 'Wgraj inny plik';
+  if (!text('a-project') || src === 'plik') $('#a-project').value = d.project;
+  refresh();
+}
+function isBefore(d) {
+  return d && d.form === 'hackathon-before' && typeof d.project === 'string' && Array.isArray(d.plannedSkills);
+}
+$('#a-file').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  let d = null;
+  try { d = JSON.parse(await f.text()); } catch {}
+  if (!isBefore(d)) {
+    const st = $('#a-before-st');
+    st.className = 'st bad';
+    st.textContent = `Plik „${f.name}” to nie są odpowiedzi z części PRZED.`;
+    return;
+  }
+  setBefore(d, 'plik');
+  store.set(KEY.before, d);
+  saveDraft('po');
+});
+
+/* ---------- validation & progress ---------- */
+const RULES = {
+  przed: {
+    'q-b-project': () => text('b-project') ? '' : 'Wpisz nazwę projektu.',
+    'q-b-skill': () => { const s = picks('b-skills'); return s.names.length || s.none ? '' : 'Zaznacz skill albo „Jeszcze nie wiem”.'; },
+    'q-b-expect': () => [text('b-goal') ? '' : 'Opisz, co chcesz osiągnąć.', radio('b-expected') ? '' : 'Oceń, na ile uda się osiągnąć cel.'].join(' ').trim(),
+  },
+  po: {
+    'q-a-before': () => text('a-project') ? '' : 'Wgraj plik sprzed hackathonu albo wpisz nazwę projektu.',
+    'q-a-skill': () => { const s = picks('a-skills'); return s.names.length || s.none ? '' : 'Zaznacz skill albo „Nie używaliśmy skilli”.'; },
+    'q-a-models': () => picks('a-models').names.length ? '' : 'Zaznacz co najmniej jeden model.',
+    'q-a-result': () => radio('a-result') ? '' : 'Oceń, na ile udało się osiągnąć cel.',
+    'q-a-expect': () => radio('a-expect') ? '' : 'Wybierz jedną z odpowiedzi.',
+  },
+};
+// koszt nie jest wymagany, ale jeśli wpisany, musi dać się odczytać
+const FORMAT = { 'q-a-cost': () => $$('#q-a-cost input.bad').length ? 'Popraw pola zaznaczone na czerwono.' : '' };
+
+function validate(mode) {
+  const rules = { ...RULES[mode], ...(mode === 'po' ? FORMAT : {}) };
+  let first = null;
+  for (const [id, rule] of Object.entries(rules)) {
+    const msg = rule(), q = $('#' + id), e = $(':scope > .err', q);
+    q.classList.toggle('invalid', !!msg);
+    e.hidden = !msg;
+    e.textContent = msg;
+    if (msg && !first) first = q;
+  }
+  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  return !first;
+}
+function clearError(q) {
+  if (!q?.classList.contains('invalid')) return;
+  const rule = RULES.przed[q.id] || RULES.po[q.id] || FORMAT[q.id];
+  if (rule && !rule()) { q.classList.remove('invalid'); $(':scope > .err', q).hidden = true; }
+}
+
+function refresh() {
+  const mode = document.body.dataset.mode;
+  const rules = Object.values(RULES[mode]);
+  const done = rules.filter(r => !r()).length;
+  $('#done').textContent = done;
+  $('#total').textContent = rules.length;
+  $('#progress').style.width = (done / rules.length * 100) + '%';
+}
+
+function echo(input) {
+  const out = input.nextElementSibling, kind = input.dataset.parse;
+  const v = PARSE[kind](input.value);
+  const bad = Number.isNaN(v);
+  out.classList.toggle('bad', bad);
+  input.classList.toggle('bad', bad);
+  out.textContent = v == null ? '' : bad ? 'nie rozumiem tego formatu' : kind === 'tokens' ? `= ${fmt(v)} tokenów` : `= ${fmt(v, 2)} USD`;
+}
+
+/* ---------- drafts ---------- */
+function snapshot(form) {
+  const s = { v: {}, c: {}, r: {} };
+  $$('input[type=text],textarea', form).forEach(i => s.v[i.id] = i.value);
+  $$('.chips', form).forEach(g => s.c[g.id] = $$('.chip[aria-pressed=true]', g).map(c => c.dataset.name));
+  $$('input[type=radio]:checked', form).forEach(r => s.r[r.name] = r.value);
+  return s;
+}
+function restore(form, s) {
+  for (const [id, v] of Object.entries(s.v || {})) { const el = $('#' + id, form); if (el) el.value = v; }
+  for (const [id, names] of Object.entries(s.c || {}))
+    $$(`#${id} .chip`, form).forEach(c => c.setAttribute('aria-pressed', String(names.includes(c.dataset.name))));
+  for (const [name, v] of Object.entries(s.r || {})) { const el = $(`input[name="${name}"][value="${v}"]`, form); if (el) el.checked = true; }
+  $$('[data-parse]', form).forEach(i => i.value && echo(i));
+}
+function saveDraft(mode) {
+  if (store.set(KEY[mode], snapshot(forms[mode]))) $(`[data-draft="${mode}"]`).textContent = 'szkic zapisany w tej przeglądarce';
+}
+
+/* ---------- mode switching ---------- */
+function setMode(mode) {
+  if (!forms[mode]) mode = 'przed';
+  document.body.dataset.mode = mode;
+  $$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.mode === mode)));
+  $$('[data-panel]').forEach(p => p.hidden = p.dataset.panel !== mode);
+  if (location.hash !== '#' + mode) history.replaceState(null, '', '#' + mode);
+  refresh();
+  scrollTo(0, 0);
+}
+$$('.tab').forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
+addEventListener('hashchange', () => setMode(location.hash.slice(1)));
+
+/* ---------- wiring ---------- */
+for (const [mode, form] of Object.entries(forms)) {
+  form.addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (!c) return;
+    const on = c.getAttribute('aria-pressed') !== 'true';
+    c.setAttribute('aria-pressed', String(on));
+    const group = c.parentElement;
+    // „Jeszcze nie wiem” / „Nie używaliśmy” wyklucza pozostałe opcje i odwrotnie
+    if (on && c.dataset.none) {
+      $$('.chip:not([data-none])', group).forEach(x => x.setAttribute('aria-pressed', 'false'));
+      const other = $('#' + group.id + '-other');
+      if (other) other.value = '';
+    } else if (on) $$('.chip[data-none]', group).forEach(x => x.setAttribute('aria-pressed', 'false'));
+    clearError(c.closest('.q'));
+    refresh(); saveDraft(mode);
+  });
+  form.addEventListener('input', e => {
+    if (e.target.dataset.parse) echo(e.target);
+    if (e.target.classList.contains('other') && e.target.value.trim())
+      $$(`#${e.target.id.replace(/-other$/, '')} .chip[data-none]`).forEach(x => x.setAttribute('aria-pressed', 'false'));
+    clearError(e.target.closest('.q'));
+    refresh(); saveDraft(mode);
+  });
+  form.addEventListener('change', e => { clearError(e.target.closest('.q')); refresh(); saveDraft(mode); });
+}
+
+forms.przed.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!validate('przed')) return;
+  const d = beforeData();
+  const name = await saveJson(d, `ankieta-przed-${slug(d.project)}.json`);
+  if (!name) return;
+  store.set(KEY.before, d);
+  setBefore(d, 'przeglądarka');
+  const box = $('#b-done');
+  box.innerHTML = `
+    <h2>Zapisane</h2>
+    <p>Plik: <code>${esc(name)}</code>. Zachowaj go, bo po hackathonie wgrasz go w części <b>PO</b>. W tej przeglądarce odpowiedzi wczytają się same.</p>
+    <div class="actions"><button type="button" class="btn" id="go-po">Przejdź do części PO →</button></div>`;
+  box.hidden = false;
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#go-po').onclick = () => setMode('po');
+});
+
+forms.po.addEventListener('submit', e => {
+  e.preventDefault();
+  if (!validate('po')) return;
+  renderAfter(afterData());
+});
+
+$$('[data-reset]').forEach(b => b.addEventListener('click', () => {
+  const mode = b.dataset.reset;
+  if (!confirm('Wyczyścić odpowiedzi w tej części?')) return;
+  store.del(KEY[mode]);
+  if (mode === 'po') store.del(KEY.before);
+  location.reload();
+}));
+
+function init() {
+  build();
+  for (const mode of Object.keys(forms)) { const s = store.get(KEY[mode]); if (s) restore(forms[mode], s); }
+  const saved = store.get(KEY.before);
+  if (isBefore(saved)) setBefore(saved, 'przeglądarka');
+  setMode(location.hash.slice(1));
+}
+init();
+</script>
+</body>
+</html>

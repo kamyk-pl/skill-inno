@@ -191,6 +191,8 @@ td.num{font-family:var(--mono);font-size:15px}
 .partbox:hover{box-shadow:0 0 24px color-mix(in srgb,var(--c) 30%,transparent)}
 .partbox b{display:block;font:800 13px var(--mono);letter-spacing:.1em;color:var(--c);margin-bottom:4px}
 .partbox span{font-size:15px;color:var(--muted)}
+a.partbox{display:block;text-decoration:none}
+a.partbox code{font-size:13px}
 .bigpart{font:800 clamp(56px,11vw,140px)/.9 var(--mono);color:transparent;-webkit-text-stroke:2px var(--sec);margin:0 0 6px;letter-spacing:-.04em}
 
 /* homework */
@@ -849,6 +851,19 @@ npx skills add addyosmani/agent-skills --skill interview-me</pre></div>
       <img class="note-img" src="note-paw.jpg" alt="Karteczka: Pamiętaj: Daj znać łapką w górę!" width="560" height="240" loading="lazy">
     </div>
   </div>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="Ankieta" data-title="Ankieta przed i po">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> <span class="pr">$</span> ./ankieta.sh --przed --po</div>
+  <h2>Ankieta: plan i wynik</h2>
+  <p class="lead">Dwie krótkie ankiety. Pierwszą wypełnij, zanim zaczniesz, a drugą po hackathonie. Druga porówna Twój plan z tym, co faktycznie wyszło.</p>
+  <div class="grid g2" style="margin-top:22px">
+    <a class="partbox" style="--c:var(--talk)" href="ankieta.html#przed"><b>1 · PRZED HACKATHONEM →</b><span>Nazwa projektu, planowany skill i oczekiwania. Na koniec zapisz plik <code>.json</code> i zachowaj go.</span></a>
+    <a class="partbox" style="--c:var(--hw)" href="ankieta.html#po"><b>2 · PO HACKATHONIE →</b><span>Wgraj plik sprzed hackathonu, podaj skill, modele, koszt i wynik. Po zatwierdzeniu zobaczysz porównanie.</span></a>
+  </div>
+  <p class="muted" style="font:13px var(--mono);margin-top:18px">// adres: kamyk-pl.github.io/skill-inno/ankieta.html · odpowiedzi zostają u Ciebie, nic nie jest wysyłane</p>
 </div>
 </section>
 
