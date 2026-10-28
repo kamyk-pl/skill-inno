@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skille dla agentów AI</title>
+<meta name="description" content="Superpowers, Grill-me (Matt Pocock) i agent-skills (Addy Osmani): filozofia, użycie i instalacja w Claude Code. Część 1: prezentacja, część 2: zadanie domowe.">
+<style>
+:root{
+  --bg:#05070a; --panel:#0c1117; --panel2:#141b25; --line:#1f2b3a;
+  --text:#e6edf3; --muted:#8d9aab; --dim:#4f5d6e;
+  --talk:#00e5ff; --hw:#ffd84d;
+  --grill:#ff7a3d; --sp:#5b95ff; --as:#3ddc97;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans)}
+body{overflow:hidden;--part:var(--talk)}
+body[data-part="hw"]{--part:var(--hw)}
+/* neon glow + scanlines */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 70% 55% at 85% -10%,color-mix(in srgb,var(--part) 13%,transparent),transparent 70%),
+             radial-gradient(ellipse 50% 40% at 0% 110%,color-mix(in srgb,var(--part) 8%,transparent),transparent 70%);transition:background .4s}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px)}
+a{color:var(--sec)}
+code{font-family:var(--mono);font-size:.88em;background:var(--panel2);padding:.1em .35em;border-radius:4px;border:1px solid var(--line)}
+::selection{background:var(--sec);color:#000}
+
+/* top bar */
+.bar{position:fixed;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:rgba(5,7,10,.9);border-bottom:1px solid var(--line);z-index:10;backdrop-filter:blur(6px)}
+.brand{font-family:var(--mono);font-weight:700;font-size:14px;white-space:nowrap;color:var(--muted)}
+.brand b{color:var(--part)}
+.tabs{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;flex:1;align-items:center}
+.tabs::-webkit-scrollbar{display:none}
+.grp{display:flex;gap:2px;align-items:center;border:1px dashed var(--line);border-radius:8px;padding:3px;flex:none}
+.grp.on{border:1px solid var(--g)}
+.glbl{font:800 12px var(--mono);letter-spacing:.08em;border:0;border-radius:5px;padding:6px 9px;cursor:pointer;white-space:nowrap;
+  background:none;color:var(--g)}
+.grp.on .glbl{background:var(--g);color:#000}
+.tab{border:1px solid transparent;background:none;color:var(--muted);font:13px var(--mono);padding:5px 8px;border-radius:5px;cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--text);border-color:var(--line)}
+.tab.on{color:var(--tabc,var(--g));border-color:var(--tabc,var(--g));font-weight:700}
+.tocbtn{border:1px solid var(--line);background:var(--panel);color:var(--text);font:13px var(--mono);padding:7px 11px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.tocbtn:hover{border-color:var(--part)}
+.progress{position:fixed;top:56px;left:0;height:3px;background:var(--part);z-index:11;transition:width .25s;box-shadow:0 0 12px var(--part)}
+
+/* part ribbon (left edge) */
+.ribbon{position:fixed;left:0;top:59px;bottom:0;width:30px;z-index:9;display:flex;align-items:center;justify-content:center;
+  background:var(--part);color:#000;font:800 12px var(--mono);letter-spacing:.32em;white-space:nowrap;
+  writing-mode:vertical-rl;transform:rotate(180deg);transition:background .3s}
+body[data-part="hw"] .ribbon{background:repeating-linear-gradient(45deg,var(--hw) 0 22px,#e8c23a 22px 26px)}
+
+/* slides */
+.deck{position:fixed;inset:59px 0 0 30px;z-index:1}
+.slide{position:absolute;inset:0;overflow-y:auto;padding:40px 20px 96px;opacity:0;visibility:hidden;transition:opacity .25s;--part:var(--talk);--sec:var(--part)}
+.slide[data-part="hw"]{--part:var(--hw);
+  background-image:linear-gradient(rgba(255,216,77,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,216,77,.035) 1px,transparent 1px);
+  background-size:32px 32px}
+.slide.active{opacity:1;visibility:visible}
+.slide[data-color="grill"]{--sec:var(--grill)}
+.slide[data-color="sp"]{--sec:var(--sp)}
+.slide[data-color="as"]{--sec:var(--as)}
+.inner{max-width:1100px;margin:0 auto}
+.kicker{font-family:var(--mono);color:var(--sec);font-size:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.kicker .pr{color:var(--dim)}
+.kicker .pg{color:var(--dim);margin-left:auto}
+.kicker .pt{font-weight:800;font-size:11px;letter-spacing:.12em;padding:2px 7px;border-radius:4px;background:var(--part);color:#000}
+h1,h2,h3{font-family:var(--mono);letter-spacing:-.01em}
+h1{font-size:clamp(32px,5.4vw,62px);line-height:1.08;margin:0 0 18px;text-shadow:0 0 22px color-mix(in srgb,var(--sec) 45%,transparent)}
+h2{font-size:clamp(24px,3.4vw,38px);line-height:1.18;margin:0 0 22px}
+h2::before{content:"# ";color:var(--sec);opacity:.75}
+h3{font-size:17px;margin:0 0 8px}
+p,li{font-size:clamp(16px,1.55vw,19px);line-height:1.55}
+.lead{font-size:clamp(18px,1.9vw,22px);color:var(--muted);max-width:860px}
+.muted{color:var(--muted)}
+.hl{color:var(--sec)}
+ul{padding-left:1.2em;margin:.4em 0}
+li{margin:.25em 0}
+li::marker{color:var(--sec)}
+.cur{display:inline-block;width:.55em;height:.95em;background:var(--sec);vertical-align:-.1em;margin-left:.1em;animation:blink 1.1s steps(1) infinite;box-shadow:0 0 12px var(--sec)}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.cur{animation:none}}
+
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.card{background:linear-gradient(180deg,var(--panel),#080c11);border:1px solid var(--line);border-radius:6px;padding:20px;transition:border-color .2s,box-shadow .2s}
+.card:hover{border-color:color-mix(in srgb,var(--c,var(--sec)) 55%,var(--line));box-shadow:0 0 24px color-mix(in srgb,var(--c,var(--sec)) 12%,transparent)}
+.card.top{border-top:3px solid var(--c,var(--sec))}
+.card p,.card li{font-size:16px}
+.card h3{color:var(--c,var(--text))}
+
+.quote{border-left:3px solid var(--sec);padding:8px 0 8px 20px;margin:24px 0;font-size:clamp(18px,2vw,22px);font-style:italic}
+.quote small{display:block;font-style:normal;color:var(--muted);font-size:14px;margin-top:6px;font-family:var(--mono)}
+
+.stat{display:flex;gap:24px;flex-wrap:wrap;margin:12px 0}
+.stat div{font-size:13px;color:var(--muted);font-family:var(--mono)}
+.stat b{display:block;font-size:24px;color:var(--c,var(--text));text-shadow:0 0 14px color-mix(in srgb,var(--c,var(--sec)) 40%,transparent)}
+
+.pill{display:inline-block;font-family:var(--mono);font-size:13px;padding:3px 9px;border-radius:4px;background:var(--panel2);border:1px solid var(--line);margin:3px 4px 3px 0}
+.pill.u{border-color:var(--sec);color:var(--sec)}
+
+/* code */
+.code{position:relative;background:#020305;border:1px solid var(--line);border-radius:6px;margin:10px 0 16px}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:14px;line-height:1.6;color:#b9f6ca}
+.code .lbl{font-size:12px;color:var(--dim);padding:8px 16px 0;font-family:var(--mono)}
+.code .lbl::before{content:"● ● ●  ";color:var(--line)}
+.code .c{color:#5d6b7c}
+.copy{position:absolute;top:7px;right:8px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:4px;font:12px var(--mono);padding:4px 8px;cursor:pointer}
+.copy:hover{color:var(--sec);border-color:var(--sec)}
+
+/* flow */
+.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:20px 0}
+.step{flex:1 1 140px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;position:relative}
+.step .n{font-family:var(--mono);color:var(--sec);font-size:13px;font-weight:700}
+.step b{display:block;margin:4px 0;font-size:15px;font-family:var(--mono)}
+.step span{font-size:14px;color:var(--muted);line-height:1.4;display:block}
+
+/* chat mock / terminal window */
+.term{background:#020305;border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.tbar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--panel2);border-bottom:1px solid var(--line);font:12px var(--mono);color:var(--dim)}
+.tbar i{width:10px;height:10px;border-radius:50%;background:#ff5f56}.tbar i+i{background:#ffbd2e}.tbar i+i+i{background:#27c93f}
+.tbar span{margin-left:8px}
+.tbody{padding:16px 18px;font-family:var(--mono);font-size:14px;line-height:1.65;color:#cfe8d6}
+.tbody .p{color:var(--sec)}
+.tbody .o{color:var(--muted)}
+.chat{font-size:15px;line-height:1.55;font-family:var(--sans);color:var(--text)}
+.chat .q{margin-bottom:14px}
+.chat .rec{color:var(--as);margin-top:4px}
+.chat hr{border:0;border-top:1px dashed var(--line);margin:14px 0}
+.chat .me{background:var(--panel2);border-radius:6px;padding:8px 12px;margin-top:10px;font-family:var(--mono);font-size:14px}
+
+/* cats */
+.cam{position:relative;border:1px solid var(--sec);border-radius:8px;overflow:hidden;background:#000;
+  box-shadow:0 0 0 4px #000,0 0 46px color-mix(in srgb,var(--sec) 35%,transparent)}
+.cam img{display:block;width:100%;height:auto}
+.cam .rec{position:absolute;top:10px;left:12px;font:700 12px var(--mono);color:#ff5252;text-shadow:0 0 6px #000}
+.cam .rec::before{content:"● ";animation:blink 1.4s steps(1) infinite}
+.cam .cap{position:absolute;left:0;right:0;bottom:0;padding:22px 12px 9px;background:linear-gradient(transparent,rgba(0,0,0,.88));font:12px var(--mono);color:#d7fbe8}
+.ascii{font-family:var(--mono);font-size:15px;line-height:1.25;color:var(--sec);margin:0;white-space:pre;text-shadow:0 0 10px color-mix(in srgb,var(--sec) 50%,transparent)}
+.say{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px dashed var(--sec);border-radius:8px;padding:12px 16px;margin:18px 0}
+.say .ascii{font-size:13px}
+.say p{margin:0;font-size:16px}
+
+/* video */
+.vgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.vgrid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.vid{grid-template-columns:96px minmax(0,1fr)}.vthumb{width:96px}}
+.vid>div{min-width:0;overflow-wrap:anywhere}
+.yt{position:relative;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#000;border:1px solid var(--sec);box-shadow:0 0 30px color-mix(in srgb,var(--sec) 18%,transparent)}
+.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.ytplay{position:absolute;inset:0;width:100%;border:0;padding:0;cursor:pointer;background:#000 center/cover no-repeat;display:flex;align-items:center;justify-content:center}
+.ytplay .play{width:76px;height:54px;border-radius:12px;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;transition:background .15s}
+.ytplay .play::after{content:"";border-style:solid;border-width:12px 0 12px 20px;border-color:transparent transparent transparent #fff;margin-left:4px}
+.ytplay:hover .play{background:var(--sec)}
+.ytcap{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font:13px var(--mono);color:var(--muted)}
+.vlist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.vid{display:grid;grid-template-columns:128px minmax(0,1fr);gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;margin:0}
+.vid.on{border-color:var(--sec)}
+.vthumb{width:128px;aspect-ratio:16/9;border:0;border-radius:4px;cursor:pointer;background:#000 center/cover no-repeat;position:relative}
+.vthumb::after{content:"▶";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;text-shadow:0 1px 6px #000}
+.vid b{display:block;font-size:15px;line-height:1.3}
+.vid a{color:var(--text);text-decoration:none}
+.vid a:hover{color:var(--sec)}
+.vmeta{display:block;font-size:12px;color:var(--muted);margin:3px 0;font-family:var(--mono)}
+.vdesc{display:block;font-size:14px;line-height:1.4;color:var(--muted)}
+.tag{display:inline-block;font:700 11px var(--mono);padding:1px 6px;border-radius:3px;background:var(--sec);color:#000;margin-right:5px;vertical-align:1px}
+
+/* table */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:15px}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+thead th{background:var(--panel2);font:700 14px var(--mono)}
+tbody th{color:var(--muted);font:600 13px var(--mono);white-space:nowrap}
+tr:last-child td,tr:last-child th{border-bottom:0}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+th.grill{color:var(--grill)} th.sp{color:var(--sp)} th.as{color:var(--as)}
+td.num{font-family:var(--mono);font-size:15px}
+
+/* hero / part slides */
+.hero{min-height:calc(100vh - 210px);display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:40px;align-items:center}
+@media (max-width:900px){.hero{grid-template-columns:minmax(0,1fr);gap:24px}.hero .cam{max-width:340px}}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0}
+.chip{border:1px solid var(--c);color:var(--c);border-radius:6px;padding:9px 14px;font:700 clamp(14px,1.6vw,17px) var(--mono);cursor:pointer;background:rgba(0,0,0,.3)}
+.chip:hover{background:var(--c);color:#000;box-shadow:0 0 20px var(--c)}
+.parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:22px 0 8px}
+.partbox{text-align:left;cursor:pointer;font:inherit;color:var(--text);background:rgba(0,0,0,.35);border:1px solid var(--c);border-radius:8px;padding:14px 16px}
+.partbox:hover{box-shadow:0 0 24px color-mix(in srgb,var(--c) 30%,transparent)}
+.partbox b{display:block;font:800 13px var(--mono);letter-spacing:.1em;color:var(--c);margin-bottom:4px}
+.partbox span{font-size:15px;color:var(--muted)}
+.bigpart{font:800 clamp(56px,11vw,140px)/.9 var(--mono);color:transparent;-webkit-text-stroke:2px var(--sec);margin:0 0 6px;letter-spacing:-.04em}
+
+/* homework */
+.mission{counter-reset:m;list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.mission li{counter-increment:m;display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:0;font-size:17px}
+.mission li::before{content:"0" counter(m);font:800 20px var(--mono);color:var(--sec)}
+.mission small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.note-img{display:block;width:100%;max-width:420px;border-radius:4px;transform:rotate(-2deg);box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.check{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.check li{margin:0}
+.check label{display:flex;gap:12px;align-items:center;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-size:17px}
+.check input{appearance:none;width:22px;height:22px;flex:none;border:2px solid var(--sec);border-radius:4px;display:grid;place-items:center;margin:0;cursor:pointer}
+.check input:checked{background:var(--sec)}
+.check input:checked::after{content:"✓";color:#000;font:800 15px var(--mono)}
+.check input:checked+span{color:var(--muted);text-decoration:line-through}
+.done{font:700 15px var(--mono);color:var(--sec);margin-top:12px}
+
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--part);border-radius:6px;padding:14px 18px;margin:18px 0;font-size:16px;line-height:1.5}
+.note.warn{border-left-color:var(--grill)}
+
+/* nav */
+.nav{position:fixed;bottom:16px;right:16px;display:flex;gap:8px;align-items:center;z-index:10}
+.nav button{width:44px;height:44px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:20px var(--mono);cursor:pointer}
+.nav button:hover{border-color:var(--part);color:var(--part)}
+.count{font-family:var(--mono);font-size:13px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+.count b{color:var(--part)}
+.hint{position:fixed;bottom:24px;left:46px;font:12px var(--mono);color:var(--dim);z-index:9}
+
+/* toc */
+.toc{position:fixed;inset:0;background:rgba(3,4,6,.96);z-index:20;display:none;overflow-y:auto;padding:70px 16px 40px}
+.toc.open{display:block}
+.toc .inner{max-width:1000px}
+.tocpart{border:1px solid var(--g);border-radius:8px;padding:16px 18px 4px;margin-bottom:22px}
+.tocpart>h2{font-size:18px;color:var(--g);margin:0 0 14px}
+.tocpart>h2::before{content:"// "}
+.tocsec{margin-bottom:16px}
+.tocsec h3{font-size:13px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.tocsec ol{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.tocsec li{margin:0}
+.tocsec button{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:9px 12px;font:inherit;font-size:14px;cursor:pointer}
+.tocsec button:hover{border-color:var(--g)}
+.tocsec button i{font-style:normal;color:var(--dim);font-family:var(--mono);margin-right:6px}
+.tocclose{position:fixed;top:16px;right:16px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px 14px;font:14px var(--mono);cursor:pointer}
+
+@media (max-width:1480px){.brand{display:none}}
+@media (max-width:640px){
+  .ribbon,.hint{display:none}
+  .deck{left:0}
+  .slide{padding:28px 16px 96px}
+  .kicker .pg{margin-left:0}
+}
+@media print{
+  body{overflow:visible}
+  body::before,body::after,.bar,.nav,.hint,.progress,.toc,.ribbon{display:none!important}
+  .deck{position:static}
+  .slide{position:relative;opacity:1;visibility:visible;overflow:visible;page-break-after:always;padding:24px}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">inno@ai:<b>~/skills</b>$</div>
+  <nav class="tabs" id="tabs"></nav>
+  <button class="tocbtn" id="tocbtn" title="Spis slajdów (O)">☰ ls</button>
+</header>
+<div class="progress" id="progress"></div>
+<div class="ribbon" id="ribbon"></div>
+
+<main class="deck" id="deck">
+
+<!-- ================================================================
+     CZĘŚĆ 1: PREZENTACJA (na żywo)
+     ================================================================ -->
+<section class="slide" data-part="talk" data-section="Start" data-title="Tytuł">
+<div class="inner hero">
+  <div>
+    <div class="kicker"><span class="pr">$</span> ./yet-another-ai-inno --day=18-19.11</div>
+    <h1>Skille dla agentów AI:<br>który zestaw wybrać?<span class="cur"></span></h1>
+    <p class="lead">Trzy najpopularniejsze kolekcje skilli do Claude Code. Najpierw krótko i na żywo, potem zadanie domowe do samodzielnego przeklikania.</p>
+    <div class="chips">
+      <button class="chip" style="--c:var(--grill)" data-jump="talk:Grill-me">🔥 grill-me</button>
+      <button class="chip" style="--c:var(--sp)" data-jump="talk:Superpowers">⚡ superpowers</button>
+      <button class="chip" style="--c:var(--as)" data-jump="talk:agent-skills">🤖 agent-skills</button>
+    </div>
+    <div class="parts">
+      <button class="partbox" style="--c:var(--talk)" data-jump="talk"><b>▶ CZĘŚĆ 1 · PREZENTACJA</b><span>~15 min na żywo: filozofia i sposób pracy każdego zestawu</span></button>
+      <button class="partbox" style="--c:var(--hw)" data-jump="hw"><b>✎ CZĘŚĆ 2 · ZADANIE DOMOWE</b><span>Po pokazie, we własnym tempie: instalacja, filmy, porównanie, misja</span></button>
+    </div>
+    <p class="muted" style="font:13px var(--mono)">← → / spacja · O = spis slajdów · dane z GitHuba: 26.10.2026</p>
+  </div>
+  <div class="cam"><span class="rec">REC</span><img src="cat-hacker.jpg" alt="Kot-haker w okularach przeciwsłonecznych i bluzie z kubkiem „More skills more pizza”" width="520" height="520"><div class="cap">cam01 · senior_cat.exe · more skills, more pizza</div></div>
+</div>
+</section>
+
+<section class="slide" data-part="talk" data-section="Start" data-title="Czym jest skill?">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> man skill</div>
+  <h2>Czym jest skill?</h2>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Folder z plikiem <code>SKILL.md</code></h3>
+      <p>Instrukcje w Markdownie, które agent ładuje dopiero wtedy, gdy są potrzebne. Na start w kontekście jest tylko nazwa i opis z frontmattera.</p>
+      <div class="code"><div class="lbl">skills/grill-me/SKILL.md</div><pre>---
+name: grill-me
+description: A relentless interview to
+  sharpen a plan or design.
+---
+<span class="c"># treść: proces, kroki, reguły…</span></pre></div>
+    </div>
+    <div class="card">
+      <h3>Dwa sposoby wywołania</h3>
+      <ul>
+        <li><b>Przez użytkownika</b>: wpisujesz <code>/nazwa</code> (np. <code>/grill-me</code>)</li>
+        <li><b>Przez model</b>: agent sam sięga po skill, gdy opis pasuje do zadania (np. TDD przy implementacji)</li>
+      </ul>
+      <h3 style="margin-top:16px">Plugin = paczka skilli</h3>
+      <p>Wszystkie trzy kolekcje to <b>pluginy Claude Code</b>: skille, komendy, czasem hooki i subagenci. Instalujesz przez <code>/plugin</code>.</p>
+    </div>
+  </div>
+  <div class="note">Wspólny wróg wszystkich trzech: <b>agent idzie najkrótszą drogą</b>. Zgaduje wymagania, pomija testy i ogłasza „gotowe” bez dowodu.</div>
+</div>
+</section>
+
+<section class="slide" data-part="talk" data-section="Start" data-title="Trzy zestawy na rzut oka">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> gh repo list --sort=stars</div>
+  <h2>Trzy zestawy na rzut oka</h2>
+  <div class="grid g3">
+    <div class="card top" style="--c:var(--grill)">
+      <h3>🔥 mattpocock/skills</h3>
+      <p class="muted">„Skills for Real Engineers”</p>
+      <div class="stat"><div><b>303,8k ★</b>gwiazdek</div><div><b>27</b>skilli</div></div>
+      <p>Lekki, komponowalny <b>zestaw narzędzi</b>. Najmocniejszy w doprecyzowaniu wymagań, zanim powstanie kod.</p>
+    </div>
+    <div class="card top" style="--c:var(--sp)">
+      <h3>⚡ obra/superpowers</h3>
+      <p class="muted">„Skills framework &amp; methodology”</p>
+      <div class="stat"><div><b>305,4k ★</b>gwiazdek</div><div><b>~15</b>skilli</div></div>
+      <p>Kompletna <b>metodyka</b>: brainstorm → plan → subagenci → review. Skille odpalają się same i są obowiązkowe.</p>
+    </div>
+    <div class="card top" style="--c:var(--as)">
+      <h3>🤖 addyosmani/agent-skills</h3>
+      <p class="muted">„Production-grade engineering skills”</p>
+      <div class="stat"><div><b>110,7k ★</b>gwiazdek</div><div><b>25</b>skilli</div></div>
+      <p>Cały <b>cykl życia</b> oprogramowania (Define → Ship) z bramkami jakości, personami recenzentów i checklistami.</p>
+    </div>
+  </div>
+  <div class="say"><pre class="ascii"> /\_/\
+( o.o )
+ &gt; ^ &lt;</pre><p>Gwiazdek prawie po równo u dwóch pierwszych. Różnica jest w filozofii, więc o niej teraz.</p></div>
+</div>
+</section>
+
+<!-- ---------- GRILL-ME (talk) ---------- -->
+<section class="slide" data-part="talk" data-section="Grill-me" data-color="grill" data-title="Grill-me: filozofia">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> cat mattpocock/skills/README.md <span class="muted">· Matt Pocock</span></div>
+  <h2>Grill-me: najpierw zrozumienie, potem kod</h2>
+  <div class="quote">„No-one knows exactly what they want.”<small>Dave Thomas &amp; Andrew Hunt, The Pragmatic Programmer, cytowane w README</small></div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Problem nr 1: rozjazd oczekiwań</h3>
+      <p>Najczęstsza porażka to <b>misalignment</b>: myślisz, że agent wie, czego chcesz, a potem widzisz, co zbudował. Lekarstwo to sesja <b>grillowania</b>, w której agent zadaje ci szczegółowe pytania.</p>
+    </div>
+    <div class="card">
+      <h3>Małe, komponowalne, twoje</h3>
+      <p>Pocock świadomie odcina się od frameworków typu GSD, BMAD czy Spec-Kit, które „przejmują proces” i odbierają kontrolę. Jego skille są małe, łatwe do przerobienia i działają z każdym modelem.</p>
+    </div>
+  </div>
+  <p class="muted">Pozostałe filary repo: <b>wspólny język</b> (glosariusz domeny), <b>pętle feedbacku</b> (TDD, typy, przeglądarka) i <b>dbałość o architekturę</b> (deep modules wg Ousterhouta).</p>
+</div>
+</section>
+
+<section class="slide" data-part="talk" data-section="Grill-me" data-color="grill" data-title="Grill-me: jak działa">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> /grill-me</div>
+  <h2>Jak działa grillowanie</h2>
+  <div class="grid g2">
+    <div>
+      <ul>
+        <li>Agent buduje <b>drzewo decyzji</b>: każda decyzja rozgałęzia się na kolejne.</li>
+        <li>Pyta w <b>rundach</b>. W rundzie są tylko pytania, na które da się już odpowiedzieć (tzw. frontier).</li>
+        <li>Przy każdym pytaniu podaje <b>swoją rekomendację</b>, więc „tak” oznacza akceptację.</li>
+        <li><b>Fakty sprawdza sam</b> (kod, pliki, narzędzia, przez subagenta). <b>Decyzje należą do ciebie.</b></li>
+        <li>Koniec, gdy drzewo jest wyczerpane i nic nie zostało przyjęte po cichu.</li>
+      </ul>
+    </div>
+    <div class="term">
+      <div class="tbar"><i></i><i></i><i></i><span>claude — /grill-me logowanie</span></div>
+      <div class="tbody chat">
+        <div class="q">❓ <b>Q1 · Gdzie trzymamy sesję użytkownika?</b><br>Cookie HTTP-only, JWT w localStorage czy sesja po stronie serwera?
+          <div class="rec">➡️ Cookie HTTP-only: bezpieczniejsze, a SSR już jest.</div></div>
+        <hr>
+        <div class="q">❓ <b>Q2 · Czy wylogowanie ma działać na wszystkich urządzeniach?</b>
+          <div class="rec">➡️ Tak, unieważniamy wszystkie sesje.</div></div>
+        <div class="me">&gt; Q1 tak. Q2 nie, tylko bieżące urządzenie.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ---------- SUPERPOWERS (talk) ---------- -->
+<section class="slide" data-part="talk" data-section="Superpowers" data-color="sp" data-title="Superpowers: filozofia">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> cat obra/superpowers/README.md <span class="muted">· Jesse Vincent (Prime Radiant)</span></div>
+  <h2>Superpowers: metodyka, nie zestaw porad</h2>
+  <p class="lead">Superpowers to <b>kompletna metodyka wytwarzania oprogramowania</b> dla agenta. Skille aktywują się automatycznie, a agent przed każdym zadaniem sprawdza, który ma zastosowanie. To <b>obowiązkowe workflow, nie sugestie</b>.</p>
+  <div class="grid g2" style="margin-top:20px">
+    <div class="card"><h3>🧪 Test-Driven Development</h3><p>Testy zawsze najpierw. Kod napisany przed testem jest <b>usuwany</b>.</p></div>
+    <div class="card"><h3>🧭 Systematycznie zamiast na czuja</h3><p>Proces zamiast zgadywania, również przy debugowaniu (4 fazy szukania przyczyny).</p></div>
+    <div class="card"><h3>✂️ Redukcja złożoności</h3><p>Prostota jako główny cel: YAGNI i DRY.</p></div>
+    <div class="card"><h3>🔍 Dowody, nie deklaracje</h3><p>Weryfikacja przed ogłoszeniem sukcesu (<code>verification-before-completion</code>).</p></div>
+  </div>
+</div>
+</section>
+
+<section class="slide" data-part="talk" data-section="Superpowers" data-color="sp" data-title="Superpowers: workflow">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> superpowers --pipeline</div>
+  <h2>Workflow, który uruchamia się sam</h2>
+  <div class="flow">
+    <div class="step"><div class="n">01</div><b>brainstorming</b><span>Zanim cokolwiek zbuduje, dopytuje, co i po co. Pokazuje design w krótkich kawałkach.</span></div>
+    <div class="step"><div class="n">02</div><b>git worktree</b><span>Izolowany workspace na nowej gałęzi z czystym stanem testów.</span></div>
+    <div class="step"><div class="n">03</div><b>writing-plans</b><span>Zadania po 2–5 minut z dokładnymi ścieżkami, kodem i krokami weryfikacji.</span></div>
+    <div class="step"><div class="n">04</div><b>subagenci</b><span>Świeży subagent na każde zadanie i review po każdym.</span></div>
+    <div class="step"><div class="n">05</div><b>TDD</b><span>RED → GREEN → REFACTOR, commit.</span></div>
+    <div class="step"><div class="n">06</div><b>code review</b><span>Krytyczne uwagi blokują dalszą pracę.</span></div>
+    <div class="step"><div class="n">07</div><b>finish branch</b><span>Testy, merge lub PR, sprzątanie worktree.</span></div>
+  </div>
+  <div class="quote">Plan ma być na tyle jasny, by wykonał go „entuzjastyczny junior bez gustu, osądu, kontekstu projektu i z awersją do testów”.<small>README Superpowers</small></div>
+  <p class="muted">Efekt: agent potrafi pracować <b>autonomicznie nawet kilka godzin</b> bez zbaczania z planu.</p>
+</div>
+</section>
+
+<!-- ---------- AGENT-SKILLS (talk) ---------- -->
+<section class="slide" data-part="talk" data-section="agent-skills" data-color="as" data-title="agent-skills: filozofia">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> cat addyosmani/agent-skills/README.md <span class="muted">· Addy Osmani (Google)</span></div>
+  <h2>agent-skills: dyscyplina seniora w każdej fazie</h2>
+  <p class="lead">Agenci domyślnie pomijają spec, testy i security review. agent-skills koduje <b>workflow, bramki jakości i dobre praktyki seniorów</b>, żeby agent stosował je konsekwentnie.</p>
+  <div class="grid g2" style="margin-top:20px">
+    <div class="card"><h3>📋 Proces, nie proza</h3><p>Każdy skill ma kroki, punkty kontrolne i warunki wyjścia. To workflow do wykonania, a nie dokumentacja do przeczytania.</p></div>
+    <div class="card"><h3>🛡️ Anti-rationalization</h3><p>Tabela typowych wymówek agenta („dodam testy później”) z gotowymi kontrargumentami plus lista „Red Flags”.</p></div>
+    <div class="card"><h3>✅ Weryfikacja obowiązkowa</h3><p>Każdy skill kończy się wymaganiem dowodów: testy, output builda, dane z runtime. „Wygląda dobrze” nie wystarcza.</p></div>
+    <div class="card"><h3>🏛️ Kultura inżynierska Google</h3><p>Hyrum's Law, Beyoncé Rule, piramida testów, Chesterton's Fence, trunk-based development, Shift Left.</p></div>
+  </div>
+</div>
+</section>
+
+<section class="slide" data-part="talk" data-section="agent-skills" data-color="as" data-title="agent-skills: cykl życia">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> /spec &amp;&amp; /plan &amp;&amp; /build &amp;&amp; /test &amp;&amp; /review &amp;&amp; /ship</div>
+  <h2>Komendy mapują cykl życia oprogramowania</h2>
+  <div class="flow">
+    <div class="step"><div class="n">DEFINE</div><b>/spec</b><span>Spec przed kodem</span></div>
+    <div class="step"><div class="n">PLAN</div><b>/plan</b><span>Małe, atomowe zadania</span></div>
+    <div class="step"><div class="n">BUILD</div><b>/build</b><span>Jeden slice naraz</span></div>
+    <div class="step"><div class="n">VERIFY</div><b>/test</b><span>Testy są dowodem</span></div>
+    <div class="step"><div class="n">REVIEW</div><b>/review</b><span>Poprawa zdrowia kodu</span></div>
+    <div class="step"><div class="n">SHIP</div><b>/ship</b><span>Szybciej = bezpieczniej</span></div>
+  </div>
+  <div class="grid g3">
+    <div class="card"><h3>Dodatkowe komendy</h3><p><code>/constraints</code>: próg jakości ustalony raz<br><code>/code-simplify</code>: czytelność ponad spryt<br><code>/webperf</code>: najpierw pomiar</p></div>
+    <div class="card"><h3>Tryb <code>/build auto</code></h3><p>Zatwierdzasz plan raz, a agent implementuje wszystkie zadania, każde przez TDD i osobny commit. Zatrzymuje się przy błędach.</p></div>
+    <div class="card"><h3>Auto-aktywacja</h3><p>Projektujesz API, to włącza się <code>api-and-interface-design</code>. Budujesz UI, to <code>frontend-ui-engineering</code>.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ---------- WYBÓR (talk) ---------- -->
+<section class="slide" data-part="talk" data-section="Wybór" data-title="Który wybrać?">
+<div class="inner">
+  <div class="kicker"><span class="pr">$</span> diff --side-by-side</div>
+  <h2>Który wybrać?</h2>
+  <div class="grid g3">
+    <div class="card top" style="--c:var(--grill)"><h3>🔥 Grill-me, gdy…</h3>
+      <ul><li>agent ciągle „zgaduje” wymagania</li><li>chcesz kontrolować każdy krok</li><li>robisz szybkie, codzienne zmiany</li><li>budujesz słownik domeny (GLOSSARY.md, ADR)</li></ul>
+      <div class="stat"><div><b>lekki</b>ceremonia</div><div><b>niska</b>autonomia</div></div></div>
+    <div class="card top" style="--c:var(--sp)"><h3>⚡ Superpowers, gdy…</h3>
+      <ul><li>masz duże, niejasne zadanie i chcesz je oddać agentowi</li><li>akceptujesz sztywny proces (TDD zawsze)</li><li>chcesz długiej, autonomicznej pracy z review</li></ul>
+      <div class="stat"><div><b>ciężki</b>ceremonia</div><div><b>wysoka</b>autonomia</div></div></div>
+    <div class="card top" style="--c:var(--as)"><h3>🤖 agent-skills, gdy…</h3>
+      <ul><li>prowadzisz feature od specu do produkcji</li><li>liczy się security, wydajność, observability</li><li>chcesz wspólnego standardu dla zespołu</li></ul>
+      <div class="stat"><div><b>średni</b>ceremonia</div><div><b>checkpointy</b>autonomia</div></div></div>
+  </div>
+  <h3 style="margin-top:26px">Szybkie scenariusze</h3>
+  <ul>
+    <li><i>„Mam mglisty pomysł”</i>: <b style="color:var(--grill)">/grill-me</b> (albo <code>interview-me</code> z agent-skills)</li>
+    <li><i>„Refactor podsystemu na noc, review rano”</i>: <b style="color:var(--sp)">Superpowers</b></li>
+    <li><i>„Nowy endpoint z auth, testami i security review”</i>: <b style="color:var(--as)">agent-skills</b>, <code>/spec</code> … <code>/ship</code></li>
+  </ul>
+</div>
+</section>
+
+<section class="slide" data-part="talk" data-section="Wybór" data-title="Koniec prezentacji">
+<div class="inner hero">
+  <div>
+    <div class="kicker"><span class="pr">$</span> exit 0 <span class="muted">· koniec części na żywo</span></div>
+    <h1>Pytania?<span class="cur"></span></h1>
+    <p class="lead">To była część na żywo. Reszta jest dla ciebie: instalacja krok po kroku, filmy, pełne porównanie i <b style="color:var(--hw)">misja na 18–19.11</b>.</p>
+    <div class="parts">
+      <button class="partbox" style="--c:var(--hw)" data-jump="hw"><b>✎ PRZEJDŹ DO ZADANIA DOMOWEGO →</b><span>Wybierz zestaw, zainstaluj, sprawdź na prawdziwym tickecie</span></button>
+    </div>
+    <p class="muted" style="font:13px var(--mono)">// link do tego decku zostaje, przeklikaj go po spotkaniu</p>
+  </div>
+  <div class="cam"><span class="rec">REC</span><img src="cat-face.jpg" alt="Zbliżenie kota w okularach przeciwsłonecznych" width="400" height="366" loading="lazy"><div class="cap">cam02 · senior_cat czeka na pytania</div></div>
+</div>
+</section>
+
+
+<!-- ================================================================
+     CZĘŚĆ 2: ZADANIE DOMOWE (samodzielnie, po prezentacji)
+     ================================================================ -->
+<section class="slide" data-part="hw" data-section="Start" data-title="Zadanie domowe: start">
+<div class="inner hero">
+  <div>
+    <div class="kicker"><span class="pt">CZĘŚĆ 2</span> <span class="pr">$</span> git checkout homework</div>
+    <div class="bigpart">ZADANIE<br>DOMOWE</div>
+    <p class="lead">Od tego miejsca deck jest do przeklikania we własnym tempie. Każdy zestaw ma tu trzy slajdy: <b>instalacja</b>, <b>co jest w środku</b> i <b>filmy</b>. Na końcu pełne porównanie i misja.</p>
+    <div class="chips">
+      <button class="chip" style="--c:var(--grill)" data-jump="hw:Grill-me">🔥 grill-me</button>
+      <button class="chip" style="--c:var(--sp)" data-jump="hw:Superpowers">⚡ superpowers</button>
+      <button class="chip" style="--c:var(--as)" data-jump="hw:agent-skills">🤖 agent-skills</button>
+      <button class="chip" style="--c:var(--hw)" data-jump="hw:Porównanie">📊 porównanie</button>
+      <button class="chip" style="--c:var(--hw)" data-jump="hw:Misja">🍕 misja</button>
+    </div>
+  </div>
+  <img class="note-img" src="stickers.jpg" alt="Naklejki Grill-me, Superpowers i agent-skills na laptopie" width="400" height="363" loading="lazy" style="transform:rotate(2deg)">
+</div>
+</section>
+
+<!-- ---------- GRILL-ME (hw) ---------- -->
+<section class="slide" data-part="hw" data-section="Grill-me" data-color="grill" data-title="Grill-me: instalacja">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> 🔥 grill-me <span class="pg">1/3</span></div>
+  <h2>Grill-me: instalacja i pierwsze użycie</h2>
+  <div class="grid g2">
+    <div>
+      <h3>1. Plugin w Claude Code (sam się aktualizuje)</h3>
+      <div class="code"><div class="lbl">terminal</div><pre>claude plugin install mattpocock-skills@claude-plugins-official</pre></div>
+      <h3>…albo edytowalne pliki w projekcie</h3>
+      <div class="code"><div class="lbl">terminal</div><pre>npx skills@latest add mattpocock/skills</pre></div>
+      <p class="muted" style="font-size:15px">Wybierz jedną z tych dwóch metod. Obie naraz dadzą każdy skill podwójnie.</p>
+    </div>
+    <div>
+      <h3>2. Raz na repo: konfiguracja</h3>
+      <div class="code"><div class="lbl">Claude Code</div><pre>/setup-matt-pocock-skills</pre></div>
+      <p style="font-size:16px">Pyta o issue tracker (GitHub, GitLab, pliki lokalne), etykiety do triage i miejsce na dokumenty.</p>
+      <h3>3. Użycie</h3>
+      <div class="code"><div class="lbl">Claude Code</div><pre>/grill-me Chcę dodać eksport raportów do CSV</pre></div>
+    </div>
+  </div>
+  <div class="note">Rada autora: grilluj <b>za każdym razem</b>, gdy zaczynasz zmianę. To jego najpopularniejszy skill.</div>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="Grill-me" data-color="grill" data-title="Grill-me: cały zestaw">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> 🔥 grill-me <span class="pg">2/3</span></div>
+  <h2>Grill-me to wejście do większego zestawu</h2>
+  <p class="lead" style="margin-bottom:18px">Repo <code>mattpocock/skills</code> ma 27 skilli. Typowy łańcuch wygląda tak:</p>
+  <div class="flow">
+    <div class="step"><div class="n">/grill-me</div><b>Przesłuchanie</b><span>Doprecyzowanie planu. Nadaje się też do spraw niezwiązanych z kodem.</span></div>
+    <div class="step"><div class="n">/grill-with-docs</div><b>+ dokumentacja</b><span>Jak grill-me, a przy okazji uzupełnia GLOSSARY.md i ADR-y.</span></div>
+    <div class="step"><div class="n">/to-spec</div><b>Specyfikacja</b><span>Zamienia rozmowę w spec w issue trackerze.</span></div>
+    <div class="step"><div class="n">/to-tickets</div><b>Tickety</b><span>Tracer-bullet tickety z zależnościami.</span></div>
+    <div class="step"><div class="n">/implement</div><b>Implementacja</b><span>TDD w uzgodnionych miejscach, na końcu /code-review.</span></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h3>Wywoływane przez ciebie (orkiestracja)</h3>
+      <span class="pill u">/grill-me</span><span class="pill u">/grill-with-docs</span><span class="pill u">/to-spec</span><span class="pill u">/to-tickets</span><span class="pill u">/implement</span><span class="pill u">/implement-spec</span><span class="pill u">/triage</span><span class="pill u">/wayfinder</span><span class="pill u">/improve-codebase-architecture</span><span class="pill u">/handoff</span><span class="pill u">/retro</span><span class="pill u">/ask-matt</span><span class="pill u">/wait-what</span>
+    </div>
+    <div class="card"><h3>Wywoływane przez model (dyscyplina)</h3>
+      <span class="pill">grilling</span><span class="pill">tdd</span><span class="pill">diagnosing-bugs</span><span class="pill">code-review</span><span class="pill">domain-modeling</span><span class="pill">codebase-design</span><span class="pill">prototype</span><span class="pill">research</span><span class="pill">pr</span>
+    </div>
+  </div>
+  <p class="muted">Nie wiesz, od czego zacząć? <code>/ask-matt</code> podpowie, który skill pasuje do sytuacji.</p>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="Grill-me" data-color="grill" data-title="Grill-me: filmy">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> 🔥 grill-me <span class="pg">3/3</span></div>
+  <h2>Filmy: zobacz to w akcji</h2>
+  <div class="vgrid">
+    <div>
+      <div class="yt" data-id="M6mYodf0dJM"></div>
+      <div class="ytcap"><span>// kliknij miniaturę z listy, żeby przełączyć film</span></div>
+    </div>
+    <ul class="vlist">
+      <li class="vid on"><button class="vthumb" data-play="M6mYodf0dJM" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=M6mYodf0dJM" target="_blank" rel="noopener"><b><span class="tag">AUTOR</span>mattpocock/skills: A complete AI Coding workflow, end-to-end</b></a>
+        <span class="vmeta">Matt Pocock · 17 min · 728 tys. · 07.2026</span>
+        <span class="vdesc">Oficjalny tutorial: instalacja, setup, grill-with-docs, spec, tickety, implementacja z code review.</span></div></li>
+      <li class="vid"><button class="vthumb" data-play="4DhcSPkEbwI" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=4DhcSPkEbwI" target="_blank" rel="noopener"><b><span class="tag">WYWIAD</span>AI Skills with Matt Pocock</b></a>
+        <span class="vmeta">The Pragmatic Engineer · 97 min · 242 tys. · 09.2026</span>
+        <span class="vdesc">Skąd popularność grill-me i dlaczego fundamenty inżynierii liczą się bardziej niż kiedykolwiek.</span></div></li>
+      <li class="vid"><button class="vthumb" data-play="puRP9UmF0nw" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=puRP9UmF0nw" target="_blank" rel="noopener"><b>I've Tried NEW /grill-me v1.2 by Matt Pocock</b></a>
+        <span class="vmeta">AI Coding Daily · 12 min · 18 tys. · 08.2026</span>
+        <span class="vdesc">Krótki, praktyczny test grillowania na prawdziwym zadaniu.</span></div></li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ---------- SUPERPOWERS (hw) ---------- -->
+<section class="slide" data-part="hw" data-section="Superpowers" data-color="sp" data-title="Superpowers: instalacja">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> ⚡ superpowers <span class="pg">1/3</span></div>
+  <h2>Superpowers: instalacja i pierwsze użycie</h2>
+  <div class="grid g2">
+    <div>
+      <h3>Oficjalny marketplace Anthropic</h3>
+      <div class="code"><div class="lbl">Claude Code</div><pre>/plugin install superpowers@claude-plugins-official</pre></div>
+      <h3>…albo marketplace autora</h3>
+      <div class="code"><div class="lbl">Claude Code</div><pre>/plugin marketplace add obra/superpowers-marketplace
+/plugin install superpowers@superpowers-marketplace</pre></div>
+    </div>
+    <div>
+      <h3>Użycie: nic specjalnego</h3>
+      <p style="font-size:16px">Po prostu opisz, co chcesz zbudować. Test instalacji z README:</p>
+      <div class="code"><div class="lbl">Claude Code</div><pre>Let's make a react todo list</pre></div>
+      <p style="font-size:16px">Działająca instalacja <b>sama uruchomi <code>brainstorming</code></b>, zanim powstanie jakikolwiek kod.</p>
+    </div>
+  </div>
+  <div class="note warn">Telemetria: opcjonalne logo w „visual companion” wysyła wersję pluginu. Wyłączysz ją przez <code>SUPERPOWERS_DISABLE_TELEMETRY=1</code>. Respektowane jest też <code>DISABLE_TELEMETRY</code> z Claude Code.</div>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="Superpowers" data-color="sp" data-title="Superpowers: biblioteka skilli">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> ⚡ superpowers <span class="pg">2/3</span></div>
+  <h2>Co jest w środku</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Testy i debugowanie</h3>
+      <span class="pill">test-driven-development</span><span class="pill">systematic-debugging</span><span class="pill">verification-before-completion</span><span class="pill">diagnosing-superpowers</span></div>
+    <div class="card"><h3>Współpraca i proces</h3>
+      <span class="pill">brainstorming</span><span class="pill">writing-plans</span><span class="pill">executing-plans</span><span class="pill">subagent-driven-development</span><span class="pill">dispatching-parallel-agents</span><span class="pill">requesting-code-review</span><span class="pill">receiving-code-review</span><span class="pill">using-git-worktrees</span><span class="pill">finishing-a-development-branch</span></div>
+    <div class="card"><h3>Meta</h3>
+      <span class="pill">using-superpowers</span><span class="pill">writing-skills</span>
+      <p>Pisanie własnych skilli razem z metodyką ich testowania („pressure testing”).</p></div>
+    <div class="card"><h3>Gdy coś pójdzie nie tak</h3>
+      <p>Napisz: <i>„figure out what went wrong with superpowers in this session”</i>. Skill <code>diagnosing-superpowers</code> przeanalizuje transkrypt sesji i pokaże dowody.</p></div>
+  </div>
+  <p class="muted">Tańszy wariant kroku z subagentami: wszystkie zadania inline w jednej sesji.</p>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="Superpowers" data-color="sp" data-title="Superpowers: filmy">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> ⚡ superpowers <span class="pg">3/3</span></div>
+  <h2>Filmy: zobacz to w akcji</h2>
+  <div class="vgrid">
+    <div>
+      <div class="yt" data-id="TX91PdBn_IA"></div>
+      <div class="ytcap"><span>// kliknij miniaturę z listy, żeby przełączyć film</span></div>
+    </div>
+    <ul class="vlist">
+      <li class="vid on"><button class="vthumb" data-play="TX91PdBn_IA" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=TX91PdBn_IA" target="_blank" rel="noopener"><b><span class="tag">TUTORIAL</span>Claude Code + SUPERPOWERS = The End of Vibe Coding?</b></a>
+        <span class="vmeta">Eric Tech · 15 min · 127 tys. · 03.2026</span>
+        <span class="vdesc">Pełny tutorial: instalacja i przejście przez cały workflow na przykładzie.</span></div></li>
+      <li class="vid"><button class="vthumb" data-play="c5AxRQJy1eA" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=c5AxRQJy1eA" target="_blank" rel="noopener"><b><span class="tag">AUTOR</span>Give Your Agents Superpowers: Jesse Vincent Live with Tim O'Reilly</b></a>
+        <span class="vmeta">O'Reilly · 62 min · 09.2026</span>
+        <span class="vdesc">Twórca o filozofii: agentami, tak jak ludźmi, kieruje się kontekstem, jasnymi celami i feedbackiem.</span></div></li>
+      <li class="vid"><button class="vthumb" data-play="OI0stZo6Jy8" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=OI0stZo6Jy8" target="_blank" rel="noopener"><b>Claude Code Gets Superpowers!</b></a>
+        <span class="vmeta">Java Brains · 19 min · 38 tys. · 12.2025</span>
+        <span class="vdesc">Spokojne, dokładne omówienie od znanego kanału edukacyjnego.</span></div></li>
+      <li class="vid"><button class="vthumb" data-play="naUj4SyZuIA" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=naUj4SyZuIA" target="_blank" rel="noopener"><b><span class="tag">PL</span>Superpowers dla Claude Code: Skills, które zmieniają sposób kodowania z AI</b></a>
+        <span class="vmeta">Claude Code Lab · 5 min · 03.2026</span>
+        <span class="vdesc">Krótki przegląd po polsku.</span></div></li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ---------- AGENT-SKILLS (hw) ---------- -->
+<section class="slide" data-part="hw" data-section="agent-skills" data-color="as" data-title="agent-skills: instalacja">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> 🤖 agent-skills <span class="pg">1/3</span></div>
+  <h2>agent-skills: instalacja i pierwsze użycie</h2>
+  <div class="grid g2">
+    <div>
+      <h3>Plugin w Claude Code (zalecane)</h3>
+      <div class="code"><div class="lbl">Claude Code</div><pre>/plugin marketplace add addyosmani/agent-skills
+/plugin install agent-skills@addy-agent-skills</pre></div>
+      <p class="muted" style="font-size:15px">Błąd SSH (<code>Permission denied (publickey)</code>)? Podaj pełny URL HTTPS:</p>
+      <div class="code"><pre>/plugin marketplace add https://github.com/addyosmani/agent-skills.git</pre></div>
+      <h3>…albo wybrane skille przez CLI</h3>
+      <div class="code"><div class="lbl">terminal</div><pre>npx skills add addyosmani/agent-skills --list
+npx skills add addyosmani/agent-skills --skill interview-me</pre></div>
+    </div>
+    <div>
+      <h3>Użycie</h3>
+      <div class="code"><div class="lbl">Claude Code</div><pre>/spec  Endpoint do eksportu raportów
+/plan
+/build
+/test
+/agent-skills:review
+/ship</pre></div>
+      <div class="note">Claude Code ma wbudowane <code>/review</code>, więc w tym przypadku użyj formy z przestrzenią nazw: <code>/agent-skills:review</code>.</div>
+      <p style="font-size:16px">Przy małej zmianie możesz przejść od razu do <code>/test</code> i <code>/review</code>.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="agent-skills" data-color="as" data-title="agent-skills: skille i persony">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> 🤖 agent-skills <span class="pg">2/3</span></div>
+  <h2>25 skilli, 4 persony, 7 checklist</h2>
+  <div class="grid g3">
+    <div class="card"><h3>Define / Plan</h3><span class="pill">interview-me</span><span class="pill">idea-refine</span><span class="pill">spec-driven-development</span><span class="pill">constraint-driven-development</span><span class="pill">planning-and-task-breakdown</span></div>
+    <div class="card"><h3>Build</h3><span class="pill">incremental-implementation</span><span class="pill">test-driven-development</span><span class="pill">context-engineering</span><span class="pill">source-driven-development</span><span class="pill">doubt-driven-development</span><span class="pill">frontend-ui-engineering</span><span class="pill">api-and-interface-design</span></div>
+    <div class="card"><h3>Verify / Review</h3><span class="pill">browser-testing-with-devtools</span><span class="pill">debugging-and-error-recovery</span><span class="pill">code-review-and-quality</span><span class="pill">code-simplification</span><span class="pill">security-and-hardening</span><span class="pill">performance-optimization</span></div>
+    <div class="card"><h3>Ship</h3><span class="pill">git-workflow-and-versioning</span><span class="pill">ci-cd-and-automation</span><span class="pill">deprecation-and-migration</span><span class="pill">documentation-and-adrs</span><span class="pill">observability-and-instrumentation</span><span class="pill">shipping-and-launch</span></div>
+    <div class="card"><h3>Persony (subagenci)</h3><span class="pill u">code-reviewer</span><span class="pill u">test-engineer</span><span class="pill u">security-auditor</span><span class="pill u">web-performance-auditor</span><p>Przy <code>/ship</code> recenzują równolegle.</p></div>
+    <div class="card"><h3>Ciekawostka</h3><p><code>interview-me</code> to odpowiednik grill-me: jedno pytanie naraz, aż do ok. 95% pewności. Reaguje też na „grill me”.</p></div>
+  </div>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="agent-skills" data-color="as" data-title="agent-skills: filmy">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> 🤖 agent-skills <span class="pg">3/3</span></div>
+  <h2>Filmy: zobacz to w akcji</h2>
+  <div class="vgrid">
+    <div>
+      <div class="yt" data-id="Q6LR0mXArIQ"></div>
+      <div class="ytcap"><span>// kliknij miniaturę z listy, żeby przełączyć film</span></div>
+    </div>
+    <ul class="vlist">
+      <li class="vid on"><button class="vthumb" data-play="Q6LR0mXArIQ" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=Q6LR0mXArIQ" target="_blank" rel="noopener"><b><span class="tag">AUTOR</span>Agent Skills | LIVE150</b></a>
+        <span class="vmeta">Microsoft Developer · 46 min · 14 tys. · 06.2026</span>
+        <span class="vdesc">Addy Osmani: czym są skille, jak zapisują osąd seniora i jak dzięki nim dostać powtarzalną jakość.</span></div></li>
+      <li class="vid"><button class="vthumb" data-play="MFIuuhMD598" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=MFIuuhMD598" target="_blank" rel="noopener"><b>Addy's Agent Skills: 20X Better Output From OpenCode, Claude Code and Codex</b></a>
+        <span class="vmeta">AI Stack Engineer · 9 min · 09.2026</span>
+        <span class="vdesc">Praktyczne demo komend w kilku agentach, w tym w Claude Code.</span></div></li>
+      <li class="vid"><button class="vthumb" data-play="KaFVcejvWm0" aria-label="Odtwórz"></button><div>
+        <a href="https://www.youtube.com/watch?v=KaFVcejvWm0" target="_blank" rel="noopener"><b>Addy Osmani's Agent Skills: AI Coding Workflows Explained</b></a>
+        <span class="vmeta">Locally Hosted · 7 min · 06.2026</span>
+        <span class="vdesc">Krótka rozmowa o repo: workflow seniorów i bramki jakości.</span></div></li>
+    </ul>
+  </div>
+</div>
+</section>
+
+
+<!-- ---------- PORÓWNANIE (hw) ---------- -->
+<section class="slide" data-part="hw" data-section="Porównanie" data-title="Porównanie: tabela">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> <span class="pr">$</span> gh api repos/{3 repo} | jq <span class="pg">1/2</span></div>
+  <h2>Pełne porównanie</h2>
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="grill">🔥 Grill-me (Pocock)</th><th class="sp">⚡ Superpowers</th><th class="as">🤖 agent-skills</th></tr></thead>
+    <tbody>
+      <tr><th>Repo</th><td><a href="https://github.com/mattpocock/skills">mattpocock/skills</a></td><td><a href="https://github.com/obra/superpowers">obra/superpowers</a></td><td><a href="https://github.com/addyosmani/agent-skills">addyosmani/agent-skills</a></td></tr>
+      <tr><th>Gwiazdki ★</th><td class="num">303 774</td><td class="num">305 412</td><td class="num">110 683</td></tr>
+      <tr><th>Forki</th><td class="num">25 553</td><td class="num">27 207</td><td class="num">11 559</td></tr>
+      <tr><th>Repo od</th><td class="num">02.2026</td><td class="num">10.2025</td><td class="num">02.2026</td></tr>
+      <tr><th>Liczba skilli</th><td>27</td><td>~15</td><td>25 + 9 komend + 4 persony</td></tr>
+      <tr><th>Licencja</th><td>MIT</td><td>MIT</td><td>MIT</td></tr>
+      <tr><th>Idea</th><td>Skrzynka narzędzi: małe, komponowalne skille</td><td>Jedna metodyka i sztywny pipeline</td><td>Cały cykl życia (Define → Ship)</td></tr>
+      <tr><th>Wywołanie</th><td>Głównie ty (<code>/grill-me</code>, <code>/tdd</code>…)</td><td>Automatycznie i obowiązkowo</td><td>Komendy faz + auto-aktywacja</td></tr>
+      <tr><th>Ceremonia</th><td>Najlżejszy</td><td>Najcięższy</td><td>Średni (można pominąć fazy)</td></tr>
+      <tr><th>Autonomia</th><td>Niska: ty orkiestrujesz</td><td>Wysoka: godziny bez nadzoru</td><td>Checkpoint po każdej fazie (lub <code>/build auto</code>)</td></tr>
+      <tr><th>Najmocniejszy w</th><td>Wymaganiach, języku domeny, TDD</td><td>Długich, autonomicznych zadaniach</td><td>Security, perf, CI/CD, release</td></tr>
+      <tr><th>Wyróżnik</th><td>Grillowanie po drzewie decyzji</td><td>Subagenci + review po każdym tasku, worktree</td><td>Tabele anti-rationalization, persony, ewaluacje w CI</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted" style="font-size:14px">Dane z GitHub API, 26.10.2026. Gwiazdki szybko rosną, więc traktuj je jako przybliżenie.</p>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="Porównanie" data-title="Łączenie i linki">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> <span class="pr">$</span> cat links.txt <span class="pg">2/2</span></div>
+  <h2>Czy można łączyć?</h2>
+  <div class="grid g2">
+    <div class="card top" style="--c:var(--as)"><h3>✅ Tak: pojedyncze skille</h3><p>To tylko pliki Markdown. Możesz wziąć <code>grill-me</code> od Pococka, worktree od Superpowers i checklistę security od Osmaniego.</p></div>
+    <div class="card top" style="--c:var(--grill)"><h3>⚠️ Nie: dwa „routery” naraz</h3><p>Dwa pełne frameworki naraz kłócą się o nazwy komend (np. <code>/tdd</code> w dwóch miejscach) i o routing, a do tego mają różne filozofie TDD. <b>Wybierz jeden główny</b>, z reszty bierz à la carte.</p></div>
+  </div>
+  <div class="note">Zarządzanie pluginami: <code>/plugin</code> otwiera menu, w którym włączysz, wyłączysz i odinstalujesz pluginy. Łatwo przetestować każdy zestaw po kolei.</div>
+  <h3 style="margin-top:24px">Linki</h3>
+  <ul>
+    <li>🔥 <a href="https://github.com/mattpocock/skills">github.com/mattpocock/skills</a> · <a href="https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md">skill grilling</a></li>
+    <li>⚡ <a href="https://github.com/obra/superpowers">github.com/obra/superpowers</a> · <a href="https://blog.fsck.com/2025/10/09/superpowers/">post startowy autora</a></li>
+    <li>🤖 <a href="https://github.com/addyosmani/agent-skills">github.com/addyosmani/agent-skills</a> · <a href="https://github.com/addyosmani/agent-skills/blob/main/docs/comparison.md">porównanie trzech zestawów (docs/comparison.md)</a></li>
+    <li>🎬 Porównanie na wideo: <a href="https://www.youtube.com/watch?v=8D8ewFBJfFM">Matt Pocock's Claude Code Skills Beat Superpowers Now</a> <span class="muted">(Eric Tech, 24 min)</span></li>
+  </ul>
+</div>
+</section>
+
+<!-- ---------- MISJA (hw) ---------- -->
+<section class="slide" data-part="hw" data-section="Misja" data-title="Misja na 18–19.11">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> <span class="pr">$</span> ./mission.sh --deadline=18.11</div>
+  <h2>Twoja misja na AI Inno</h2>
+  <div class="grid g2" style="align-items:start">
+    <ol class="mission">
+      <li><span><b>Wybierz jeden zestaw</b> (slajd „Który wybrać?” w części 1).<small>Nie instaluj dwóch pełnych frameworków naraz.</small></span></li>
+      <li><span><b>Zainstaluj go</b> komendą ze slajdu „instalacja”.<small>Obejrzyj przynajmniej jeden film z listy.</small></span></li>
+      <li><span><b>Weź prawdziwy ticket</b>: twój, z Office Teamem albo coś od siebie.<small>Mały i konkretny: bug, endpoint, refactor jednego modułu.</small></span></li>
+      <li><span><b>Przeprowadź go skillem od początku do końca</b>.<small>Zanotuj, co agent zrobił inaczej niż bez skilla.</small></span></li>
+      <li><span><b>Pokaż wynik na Inno</b> 18–19.11.<small>Co zadziałało, co irytowało, czy zostajesz przy tym zestawie.</small></span></li>
+    </ol>
+    <div>
+      <div class="term">
+        <div class="tbar"><i></i><i></i><i></i><span>~/inno — zsh</span></div>
+        <div class="tbody">
+<span class="p">$</span> claude<br>
+<span class="p">&gt;</span> /plugin install &lt;wybrany-zestaw&gt;<br>
+<span class="o">✓ installed</span><br>
+<span class="p">&gt;</span> /grill-me Mój ticket: …<br>
+<span class="o">… agent pyta, ty decydujesz …</span><br>
+<span class="p">$</span> git push &amp;&amp; echo "🍕 PIZZA NA WYNIKI"<br>
+<span class="o">🍕 PIZZA NA WYNIKI</span><span class="cur"></span>
+        </div>
+      </div>
+      <div class="say" style="--sec:var(--hw)"><pre class="ascii">  /\_/\  🍕
+ ( =^.^=)
+  )   (  //
+ (__ __)//</pre><p><b>PIZZA NA WYNIKI.</b> Kto pokaże wynik, ten je pizzę.</p></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="slide" data-part="hw" data-section="Misja" data-title="Checklista i łapka w górę">
+<div class="inner">
+  <div class="kicker"><span class="pt">ZADANIE DOMOWE</span> <span class="pr">$</span> todo --done</div>
+  <h2>Checklista przed Inno</h2>
+  <div class="grid g2" style="align-items:center">
+    <div>
+      <ul class="check" id="check">
+        <li><label><input type="checkbox"><span>Przeklikałem / przeklikałam cały deck</span></label></li>
+        <li><label><input type="checkbox"><span>Wybrałem / wybrałam zestaw skilli</span></label></li>
+        <li><label><input type="checkbox"><span>Zainstalowałem / zainstalowałam go w Claude Code</span></label></li>
+        <li><label><input type="checkbox"><span>Obejrzałem / obejrzałam co najmniej jeden film</span></label></li>
+        <li><label><input type="checkbox"><span>Przepuściłem / przepuściłam przez skill prawdziwy ticket</span></label></li>
+        <li><label><input type="checkbox"><span>Dałem / dałam znać łapką w górę 👍</span></label></li>
+      </ul>
+      <div class="done" id="checkdone"></div>
+      <p class="muted" style="font:13px var(--mono)">// stan checklisty zapamiętuje tylko twoja przeglądarka</p>
+    </div>
+    <div style="display:flex;justify-content:center">
+      <img class="note-img" src="note-paw.jpg" alt="Karteczka: Pamiętaj: Daj znać łapką w górę!" width="560" height="240" loading="lazy">
+    </div>
+  </div>
+</div>
+</section>
+
+</main>
+
+<div class="nav">
+  <span class="count" id="count"></span>
+  <button id="prev" aria-label="Poprzedni slajd">‹</button>
+  <button id="next" aria-label="Następny slajd">›</button>
+</div>
+
+<div class="toc" id="toc" role="dialog" aria-label="Spis slajdów">
+  <button class="tocclose" id="tocclose">✕ exit (Esc)</button>
+  <div class="inner" id="tocinner"></div>
+</div>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const colors = { 'Grill-me': 'var(--grill)', 'Superpowers': 'var(--sp)', 'agent-skills': 'var(--as)' };
+  const PARTS = {
+    talk: { label: '▶ PREZENTACJA', ribbon: '▶ CZĘŚĆ 1 · PREZENTACJA · NA ŻYWO', color: 'var(--talk)' },
+    hw: { label: '✎ ZADANIE DOMOWE', ribbon: '✎ CZĘŚĆ 2 · ZADANIE DOMOWE · SAMODZIELNIE', color: 'var(--hw)' },
+  };
+
+  // parts -> sections -> slide indexes
+  const parts = [];
+  const sections = [];
+  slides.forEach((s, i) => {
+    const pk = s.dataset.part;
+    let part = parts.find(p => p.key === pk);
+    if (!part) parts.push(part = { key: pk, ...PARTS[pk], first: i, sections: [] });
+    const key = pk + ':' + s.dataset.section;
+    let sec = sections.find(x => x.key === key);
+    if (!sec) {
+      sections.push(sec = { key, name: s.dataset.section, part, first: i, items: [] });
+      part.sections.push(sec);
+    }
+    sec.items.push(i);
+  });
+  const secOf = i => sections.find(sec => sec.items.includes(i));
+
+  const tabs = document.getElementById('tabs');
+  parts.forEach(part => {
+    const grp = document.createElement('div');
+    grp.className = 'grp';
+    grp.style.setProperty('--g', part.color);
+    const lbl = document.createElement('button');
+    lbl.className = 'glbl';
+    lbl.textContent = part.label;
+    lbl.onclick = () => go(part.first);
+    grp.appendChild(lbl);
+    part.sections.forEach(sec => {
+      const b = document.createElement('button');
+      b.className = 'tab';
+      b.textContent = sec.name;
+      if (colors[sec.name]) b.style.setProperty('--tabc', colors[sec.name]);
+      b.onclick = () => go(sec.first);
+      sec.tab = b;
+      grp.appendChild(b);
+    });
+    part.grp = grp;
+    tabs.appendChild(grp);
+  });
+
+  const tocInner = document.getElementById('tocinner');
+  parts.forEach(part => {
+    const box = document.createElement('div');
+    box.className = 'tocpart';
+    box.style.setProperty('--g', part.color);
+    const h2 = document.createElement('h2');
+    h2.textContent = part.ribbon;
+    box.appendChild(h2);
+    part.sections.forEach(sec => {
+      const wrap = document.createElement('div');
+      wrap.className = 'tocsec';
+      const h = document.createElement('h3');
+      h.textContent = sec.name;
+      h.style.color = colors[sec.name] || part.color;
+      const ol = document.createElement('ol');
+      sec.items.forEach(i => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.innerHTML = '<i>' + (i + 1) + '</i>';
+        b.appendChild(document.createTextNode(slides[i].dataset.title));
+        b.onclick = () => { closeToc(); go(i); };
+        li.appendChild(b);
+        ol.appendChild(li);
+      });
+      wrap.append(h, ol);
+      box.appendChild(wrap);
+    });
+    tocInner.appendChild(box);
+  });
+
+  const progress = document.getElementById('progress');
+  const count = document.getElementById('count');
+  const ribbon = document.getElementById('ribbon');
+  let cur = -1;
+
+  function showThumb(yt) {
+    const id = yt.dataset.id;
+    const b = document.createElement('button');
+    b.className = 'ytplay';
+    b.setAttribute('aria-label', 'Odtwórz film');
+    b.style.backgroundImage = `url(https://i.ytimg.com/vi/${id}/hqdefault.jpg)`;
+    b.innerHTML = '<span class="play"></span>';
+    b.onclick = () => play(yt);
+    yt.replaceChildren(b);
+  }
+  function play(yt) {
+    const f = document.createElement('iframe');
+    f.src = `https://www.youtube-nocookie.com/embed/${yt.dataset.id}?autoplay=1&rel=0`;
+    f.title = 'YouTube';
+    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    f.allowFullscreen = true;
+    f.referrerPolicy = 'strict-origin-when-cross-origin';
+    yt.replaceChildren(f);
+  }
+  document.querySelectorAll('.yt').forEach(showThumb);
+  document.querySelectorAll('[data-play]').forEach(b => {
+    b.style.backgroundImage = `url(https://i.ytimg.com/vi/${b.dataset.play}/mqdefault.jpg)`;
+    b.onclick = () => {
+      const slide = b.closest('.slide');
+      const yt = slide.querySelector('.yt');
+      slide.querySelectorAll('.vid').forEach(v => v.classList.toggle('on', v.contains(b)));
+      yt.dataset.id = b.dataset.play;
+      play(yt);
+    };
+  });
+
+  function go(n) {
+    n = Math.max(0, Math.min(slides.length - 1, n));
+    if (n === cur) return;
+    if (cur >= 0) {
+      slides[cur].classList.remove('active');
+      slides[cur].querySelectorAll('.yt iframe').forEach(f => showThumb(f.parentElement));
+    }
+    cur = n;
+    const s = slides[cur];
+    const sec = secOf(cur);
+    const part = sec.part;
+    s.classList.add('active');
+    s.scrollTop = 0;
+    document.body.dataset.part = part.key;
+    ribbon.textContent = part.ribbon;
+    progress.style.width = ((cur + 1) / slides.length * 100) + '%';
+    const inPart = slides.filter(x => x.dataset.part === part.key);
+    count.innerHTML = `<b>${part.key === 'talk' ? 'TALK' : 'HW'}</b> ${inPart.indexOf(s) + 1}/${inPart.length} · ${cur + 1}/${slides.length}`;
+    parts.forEach(p => p.grp.classList.toggle('on', p === part));
+    sections.forEach(x => x.tab.classList.toggle('on', x === sec));
+    sec.tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    history.replaceState(null, '', '#' + (cur + 1));
+    document.title = s.dataset.title + ' · Skille dla agentów AI';
+  }
+
+  const toc = document.getElementById('toc');
+  const openToc = () => toc.classList.add('open');
+  const closeToc = () => toc.classList.remove('open');
+  document.getElementById('tocbtn').onclick = openToc;
+  document.getElementById('tocclose').onclick = closeToc;
+  document.getElementById('prev').onclick = () => go(cur - 1);
+  document.getElementById('next').onclick = () => go(cur + 1);
+
+  // data-jump="talk" | "hw" | "talk:Grill-me" | "hw:Misja"
+  document.querySelectorAll('[data-jump]').forEach(b => {
+    b.onclick = () => {
+      const j = b.dataset.jump;
+      const t = j.includes(':') ? sections.find(x => x.key === j) : parts.find(p => p.key === j);
+      if (t) go(t.first);
+    };
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
+    if (toc.classList.contains('open')) {
+      if (k === 'Escape' || k === 'o' || k === 'O') closeToc();
+      return;
+    }
+    if (e.target.matches('input')) return;
+    if (k === 'ArrowRight' || k === 'PageDown' || (k === ' ' && !e.shiftKey)) { e.preventDefault(); go(cur + 1); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || (k === ' ' && e.shiftKey)) { e.preventDefault(); go(cur - 1); }
+    else if (k === 'Home') go(0);
+    else if (k === 'End') go(slides.length - 1);
+    else if (k === 'o' || k === 'O') openToc();
+  });
+
+  let tx = 0, ty = 0;
+  const deck = document.getElementById('deck');
+  deck.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+  deck.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(cur + (dx < 0 ? 1 : -1));
+  });
+
+  document.querySelectorAll('.code').forEach(block => {
+    const btn = document.createElement('button');
+    btn.className = 'copy';
+    btn.textContent = 'copy';
+    btn.onclick = async () => {
+      const text = block.querySelector('pre').innerText;
+      try { await navigator.clipboard.writeText(text); btn.textContent = 'copied ✓'; }
+      catch { btn.textContent = 'zaznacz ręcznie'; }
+      setTimeout(() => btn.textContent = 'copy', 1500);
+    };
+    block.appendChild(btn);
+  });
+
+  // homework checklist, remembered per browser only
+  const boxes = [...document.querySelectorAll('#check input')];
+  const done = document.getElementById('checkdone');
+  const KEY = 'ai-inno-skills-check';
+  try { (JSON.parse(localStorage.getItem(KEY)) || []).forEach((v, i) => { if (boxes[i]) boxes[i].checked = v; }); } catch {}
+  const refresh = () => {
+    const n = boxes.filter(b => b.checked).length;
+    done.textContent = n === boxes.length ? '> wszystko gotowe. Do zobaczenia przy pizzy 🍕' : `> ${n}/${boxes.length} zrobione`;
+    try { localStorage.setItem(KEY, JSON.stringify(boxes.map(b => b.checked))); } catch {}
+  };
+  boxes.forEach(b => b.addEventListener('change', refresh));
+  refresh();
+
+  const fromHash = parseInt(location.hash.slice(1), 10);
+  go(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+  window.addEventListener('hashchange', () => {
+    const n = parseInt(location.hash.slice(1), 10);
+    if (Number.isFinite(n)) go(n - 1);
+  });
+})();
+</script>
+</body>
+</html>
